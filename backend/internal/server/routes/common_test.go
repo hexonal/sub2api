@@ -42,6 +42,9 @@ func TestRegisterCommonRoutesWellKnownOpenCode(t *testing.T) {
 	if !ok || len(command) < 5 {
 		t.Fatalf("expected auth command array, got %#v", auth["command"])
 	}
+	if command[2] != `curl -fsSL "$1/api/v1/auth/entrox/cli.sh" | sh -s -- "$1"` {
+		t.Fatalf("expected entrox cli script command, got %#v", command[2])
+	}
 	if command[len(command)-1] != "https://sub2api.example.test" {
 		t.Fatalf("expected command origin, got %#v", command[len(command)-1])
 	}

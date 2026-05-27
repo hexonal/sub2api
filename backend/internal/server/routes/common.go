@@ -18,24 +18,17 @@ func RegisterCommonRoutes(r *gin.Engine) {
 
 	r.GET("/.well-known/opencode", func(c *gin.Context) {
 		origin := requestOrigin(c)
-		authScript := strings.Join([]string{
-			`login_url="$1/keys"`,
-			`if command -v python3 >/dev/null 2>&1; then`,
-			`  python3 -c 'import sys, webbrowser; webbrowser.open(sys.argv[1])' "$login_url" >/dev/null 2>&1 || true`,
-			`elif command -v open >/dev/null 2>&1; then`,
-			`  open "$login_url" >/dev/null 2>&1 || true`,
-			`elif command -v xdg-open >/dev/null 2>&1; then`,
-			`  xdg-open "$login_url" >/dev/null 2>&1 || true`,
-			`fi`,
-			`printf 'Paste Sub2API API key from %s: ' "$login_url" >/dev/tty`,
-			`IFS= read -r token </dev/tty`,
-			`printf '%s' "$token"`,
-		}, "\n")
 
 		c.JSON(http.StatusOK, gin.H{
 			"auth": gin.H{
-				"command": []string{"sh", "-c", authScript, "sub2api-entrox-login", origin},
-				"env":     sub2APIOpenCodeTokenEnv,
+				"command": []string{
+					"sh",
+					"-c",
+					`curl -fsSL "$1/api/v1/auth/entrox/cli.sh" | sh -s -- "$1"`,
+					"sub2api-entrox-login",
+					origin,
+				},
+				"env": sub2APIOpenCodeTokenEnv,
 			},
 			"config": gin.H{
 				"$schema":     "https://opencode.ai/config.json",

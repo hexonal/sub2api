@@ -199,6 +199,30 @@ func TestBackendModeAuthGuard(t *testing.T) {
 			wantStatus: http.StatusOK,
 		},
 		{
+			name:       "enabled_allows_entrox_cli_script",
+			enabled:    "true",
+			path:       "/api/v1/auth/entrox/cli.sh",
+			wantStatus: http.StatusOK,
+		},
+		{
+			name:       "enabled_allows_entrox_start",
+			enabled:    "true",
+			path:       "/api/v1/auth/entrox/start",
+			wantStatus: http.StatusOK,
+		},
+		{
+			name:       "enabled_allows_entrox_poll",
+			enabled:    "true",
+			path:       "/api/v1/auth/entrox/poll",
+			wantStatus: http.StatusOK,
+		},
+		{
+			name:       "enabled_allows_entrox_approve",
+			enabled:    "true",
+			path:       "/api/v1/auth/entrox/approve",
+			wantStatus: http.StatusOK,
+		},
+		{
 			name:       "enabled_blocks_linuxdo_oauth_start",
 			enabled:    "true",
 			path:       "/api/v1/auth/oauth/linuxdo/start",

@@ -117,6 +117,15 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/entrox/connect',
+    name: 'EntroxConnect',
+    component: () => import('@/views/auth/EntroxConnectView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Connect entrox'
+    }
+  },
+  {
     path: '/forgot-password',
     name: 'ForgotPassword',
     component: () => import('@/views/auth/ForgotPasswordView.vue'),

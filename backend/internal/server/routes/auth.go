@@ -46,6 +46,16 @@ func RegisterAuthRoutes(
 		}), h.Auth.RefreshToken)
 		// 登出接口（公开，允许未认证用户调用以撤销Refresh Token）
 		auth.POST("/logout", h.Auth.Logout)
+		auth.GET("/entrox/cli.sh", h.Auth.EntroxCLIScript)
+		auth.POST("/entrox/start", rateLimiter.LimitWithOptions("entrox-auth-start", 20, time.Minute, middleware.RateLimitOptions{
+			FailureMode: middleware.RateLimitFailClose,
+		}), h.Auth.StartEntroxCLIAuth)
+		auth.GET("/entrox/poll", rateLimiter.LimitWithOptions("entrox-auth-poll", 120, time.Minute, middleware.RateLimitOptions{
+			FailureMode: middleware.RateLimitFailClose,
+		}), h.Auth.PollEntroxCLIAuth)
+		auth.POST("/entrox/approve", gin.HandlerFunc(jwtAuth), servermiddleware.BackendModeUserGuard(settingService), rateLimiter.LimitWithOptions("entrox-auth-approve", 20, time.Minute, middleware.RateLimitOptions{
+			FailureMode: middleware.RateLimitFailClose,
+		}), h.Auth.ApproveEntroxCLIAuth)
 		// 优惠码验证接口添加速率限制：每分钟最多 10 次（Redis 故障时 fail-close）
 		auth.POST("/validate-promo-code", rateLimiter.LimitWithOptions("validate-promo", 10, time.Minute, middleware.RateLimitOptions{
 			FailureMode: middleware.RateLimitFailClose,

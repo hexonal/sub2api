@@ -4,10 +4,13 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/Wei-Shaw/sub2api/internal/pkg/openai"
+
 	"github.com/gin-gonic/gin"
 )
 
 const sub2APIOpenCodeTokenEnv = "SUB2API_API_KEY"
+const sub2APIOpenCodeProviderID = "sub2api"
 
 // RegisterCommonRoutes 注册通用路由（健康检查、状态等）
 func RegisterCommonRoutes(r *gin.Engine) {
@@ -32,15 +35,18 @@ func RegisterCommonRoutes(r *gin.Engine) {
 			},
 			"config": gin.H{
 				"$schema":     "https://opencode.ai/config.json",
-				"model":       "openai/gpt-5.4",
-				"small_model": "openai/gpt-5.4-mini",
+				"model":       sub2APIOpenCodeProviderID + "/gpt-5.4",
+				"small_model": sub2APIOpenCodeProviderID + "/gpt-5.4-mini",
 				"provider": gin.H{
-					"openai": gin.H{
+					sub2APIOpenCodeProviderID: gin.H{
 						"name": "Sub2API OpenAI",
+						"npm":  "@ai-sdk/openai-compatible",
+						"api":  origin + "/v1",
 						"options": gin.H{
 							"baseURL": origin + "/v1",
 							"apiKey":  "{env:" + sub2APIOpenCodeTokenEnv + "}",
 						},
+						"models": sub2APIOpenCodeModels(),
 					},
 				},
 			},
@@ -84,6 +90,30 @@ func requestOrigin(c *gin.Context) string {
 	}
 
 	return scheme + "://" + host
+}
+
+func sub2APIOpenCodeModels() gin.H {
+	models := gin.H{}
+	for _, model := range openai.DefaultModels {
+		if strings.Contains(model.ID, "image") {
+			continue
+		}
+		models[model.ID] = gin.H{
+			"name":       model.DisplayName,
+			"tool_call":  true,
+			"reasoning":  strings.HasPrefix(model.ID, "gpt-5"),
+			"attachment": true,
+			"modalities": gin.H{
+				"input":  []string{"text", "image"},
+				"output": []string{"text"},
+			},
+			"limit": gin.H{
+				"context": 200000,
+				"output":  32768,
+			},
+		}
+	}
+	return models
 }
 
 func firstHeaderValue(value string) string {

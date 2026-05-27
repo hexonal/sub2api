@@ -438,6 +438,7 @@ func TestFrontendServer_Middleware(t *testing.T) {
 			"/backend-api/codex/responses/compact",
 			"/antigravity/test",
 			"/setup/init",
+			"/.well-known/opencode",
 			"/health",
 			"/responses",
 			"/responses/compact",

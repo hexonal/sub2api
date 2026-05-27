@@ -10,7 +10,7 @@ import (
 )
 
 const sub2APIOpenCodeTokenEnv = "SUB2API_API_KEY"
-const sub2APIOpenCodeProviderID = "sub2api"
+const sub2APIOpenCodeProviderID = "entrox"
 
 // RegisterCommonRoutes 注册通用路由（健康检查、状态等）
 func RegisterCommonRoutes(r *gin.Engine) {
@@ -28,7 +28,7 @@ func RegisterCommonRoutes(r *gin.Engine) {
 					"sh",
 					"-c",
 					`curl -fsSL "$1/api/v1/auth/entrox/cli.sh" | sh -s -- "$1"`,
-					"sub2api-entrox-login",
+					"entrox-login",
 					origin,
 				},
 				"env": sub2APIOpenCodeTokenEnv,
@@ -39,7 +39,7 @@ func RegisterCommonRoutes(r *gin.Engine) {
 				"small_model": sub2APIOpenCodeProviderID + "/gpt-5.4-mini",
 				"provider": gin.H{
 					sub2APIOpenCodeProviderID: gin.H{
-						"name": "Sub2API OpenAI",
+						"name": "Entrox",
 						"npm":  "@ai-sdk/openai-compatible",
 						"api":  origin + "/v1",
 						"options": gin.H{

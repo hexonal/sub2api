@@ -1395,7 +1395,7 @@ func (s *GatewayService) SelectAccountForModelWithExclusions(ctx context.Context
 		}
 		groupID = resolvedGroupID
 		ctx = s.withGroupContext(ctx, group)
-		platform = group.Platform
+		platform = ResolveGroupPlatform(ctx, group.Platform)
 	} else {
 		// 无分组时只使用原生 anthropic 平台
 		platform = PlatformAnthropic
@@ -1579,7 +1579,7 @@ func (s *GatewayService) SelectAccountWithLoadAwareness(ctx context.Context, gro
 
 	// 获取模型路由配置（仅 anthropic 平台）
 	var routingAccountIDs []int64
-	if group != nil && requestedModel != "" && group.Platform == PlatformAnthropic {
+	if group != nil && requestedModel != "" && platform == PlatformAnthropic {
 		routingAccountIDs = group.GetRoutingAccountIDs(requestedModel)
 		if s.debugModelRoutingEnabled() {
 			logger.LegacyPrintf("service.gateway", "[ModelRoutingDebug] context group routing: group_id=%d model=%s enabled=%v rules=%d matched_ids=%v session=%s sticky_account=%d",
@@ -2169,8 +2169,8 @@ func (s *GatewayService) routingAccountIDsForRequest(ctx context.Context, groupI
 		}
 		return nil
 	}
-	// Preserve existing behavior: model routing only applies to anthropic groups.
-	if group.Platform != PlatformAnthropic {
+	// Preserve existing behavior: model routing only applies to effective anthropic requests.
+	if ResolveGroupPlatform(ctx, group.Platform) != PlatformAnthropic {
 		if s.debugModelRoutingEnabled() {
 			logger.LegacyPrintf("service.gateway", "[ModelRoutingDebug] skip: non-anthropic group platform: group_id=%d group_platform=%s model=%s", group.ID, group.Platform, requestedModel)
 		}
@@ -2241,14 +2241,14 @@ func (s *GatewayService) resolvePlatform(ctx context.Context, groupID *int64, gr
 		return forcePlatform, true, nil
 	}
 	if group != nil {
-		return group.Platform, false, nil
+		return ResolveGroupPlatform(ctx, group.Platform), false, nil
 	}
 	if groupID != nil {
 		group, err := s.resolveGroupByID(ctx, *groupID)
 		if err != nil {
 			return "", false, err
 		}
-		return group.Platform, false, nil
+		return ResolveGroupPlatform(ctx, group.Platform), false, nil
 	}
 	return PlatformAnthropic, false, nil
 }
@@ -8170,6 +8170,9 @@ func QuotaPlatform(ctx context.Context, apiKey *APIKey) string {
 	if fp, ok := ctx.Value(ctxkey.ForcePlatform).(string); ok && fp != "" {
 		return fp
 	}
+	if platform, ok := RequestPlatformFromContext(ctx); ok {
+		return platform
+	}
 	return PlatformFromAPIKey(apiKey)
 }
 
@@ -9019,7 +9022,7 @@ func (s *GatewayService) ResolveChannelMapping(ctx context.Context, groupID int6
 	if s.channelService == nil {
 		return ChannelMappingResult{MappedModel: model}
 	}
-	return s.channelService.ResolveChannelMapping(ctx, groupID, model)
+	return s.channelService.ResolveChannelMapping(s.withEffectiveChannelPlatform(ctx, groupID), groupID, model)
 }
 
 // ReplaceModelInBody 替换请求体中的模型名（导出供 handler 使用）
@@ -9032,7 +9035,7 @@ func (s *GatewayService) IsModelRestricted(ctx context.Context, groupID int64, m
 	if s.channelService == nil {
 		return false
 	}
-	return s.channelService.IsModelRestricted(ctx, groupID, model)
+	return s.channelService.IsModelRestricted(s.withEffectiveChannelPlatform(ctx, groupID), groupID, model)
 }
 
 // ResolveChannelMappingAndRestrict 解析渠道映射。
@@ -9041,7 +9044,7 @@ func (s *GatewayService) ResolveChannelMappingAndRestrict(ctx context.Context, g
 	if s.channelService == nil {
 		return ChannelMappingResult{MappedModel: model}, false
 	}
-	return s.channelService.ResolveChannelMappingAndRestrict(ctx, groupID, model)
+	return s.channelService.ResolveChannelMappingAndRestrict(s.withEffectiveChannelPlatformPtr(ctx, groupID), groupID, model)
 }
 
 // checkChannelPricingRestriction 根据渠道计费基准检查模型是否受定价列表限制。
@@ -9051,12 +9054,34 @@ func (s *GatewayService) checkChannelPricingRestriction(ctx context.Context, gro
 	if groupID == nil || s.channelService == nil || requestedModel == "" {
 		return false
 	}
-	mapping := s.channelService.ResolveChannelMapping(ctx, *groupID, requestedModel)
+	effectiveCtx := s.withEffectiveChannelPlatformPtr(ctx, groupID)
+	mapping := s.channelService.ResolveChannelMapping(effectiveCtx, *groupID, requestedModel)
 	billingModel := billingModelForRestriction(mapping.BillingModelSource, requestedModel, mapping.MappedModel)
 	if billingModel == "" {
 		return false
 	}
-	return s.channelService.IsModelRestricted(ctx, *groupID, billingModel)
+	return s.channelService.IsModelRestricted(effectiveCtx, *groupID, billingModel)
+}
+
+func (s *GatewayService) withEffectiveChannelPlatformPtr(ctx context.Context, groupID *int64) context.Context {
+	if groupID == nil {
+		return ctx
+	}
+	return s.withEffectiveChannelPlatform(ctx, *groupID)
+}
+
+func (s *GatewayService) withEffectiveChannelPlatform(ctx context.Context, groupID int64) context.Context {
+	if _, ok := RequestPlatformFromContext(ctx); ok {
+		return ctx
+	}
+	if groupID <= 0 || s.channelService == nil {
+		return ctx
+	}
+	platform := s.channelService.GetGroupPlatform(ctx, groupID)
+	if platform == PlatformEntrox {
+		return WithRequestPlatform(ctx, ResolveGroupPlatform(ctx, platform))
+	}
+	return ctx
 }
 
 // billingModelForRestriction 根据计费基准确定限制检查使用的模型。
@@ -9084,7 +9109,7 @@ func (s *GatewayService) isUpstreamModelRestrictedByChannel(ctx context.Context,
 	if upstreamModel == "" {
 		return false
 	}
-	return s.channelService.IsModelRestricted(ctx, groupID, upstreamModel)
+	return s.channelService.IsModelRestricted(s.withEffectiveChannelPlatform(ctx, groupID), groupID, upstreamModel)
 }
 
 // resolveAccountUpstreamModel 确定账号将请求模型映射为什么上游模型。

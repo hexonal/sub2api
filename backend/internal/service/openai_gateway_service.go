@@ -439,7 +439,7 @@ func (s *OpenAIGatewayService) ResolveChannelMapping(ctx context.Context, groupI
 	if s.channelService == nil {
 		return ChannelMappingResult{MappedModel: model}
 	}
-	return s.channelService.ResolveChannelMapping(ctx, groupID, model)
+	return s.channelService.ResolveChannelMapping(s.withOpenAIChannelPlatform(ctx, groupID), groupID, model)
 }
 
 // IsModelRestricted 检查模型是否被渠道限制（代理到 ChannelService）
@@ -447,7 +447,7 @@ func (s *OpenAIGatewayService) IsModelRestricted(ctx context.Context, groupID in
 	if s.channelService == nil {
 		return false
 	}
-	return s.channelService.IsModelRestricted(ctx, groupID, model)
+	return s.channelService.IsModelRestricted(s.withOpenAIChannelPlatform(ctx, groupID), groupID, model)
 }
 
 // ResolveChannelMappingAndRestrict 解析渠道映射。
@@ -456,7 +456,7 @@ func (s *OpenAIGatewayService) ResolveChannelMappingAndRestrict(ctx context.Cont
 	if s.channelService == nil {
 		return ChannelMappingResult{MappedModel: model}, false
 	}
-	return s.channelService.ResolveChannelMappingAndRestrict(ctx, groupID, model)
+	return s.channelService.ResolveChannelMappingAndRestrict(s.withOpenAIChannelPlatformPtr(ctx, groupID), groupID, model)
 }
 
 func (s *OpenAIGatewayService) isCodexImageGenerationBridgeEnabled(ctx context.Context, account *Account, apiKey *APIKey) bool {
@@ -478,12 +478,33 @@ func (s *OpenAIGatewayService) checkChannelPricingRestriction(ctx context.Contex
 	if groupID == nil || s.channelService == nil || requestedModel == "" {
 		return false
 	}
-	mapping := s.channelService.ResolveChannelMapping(ctx, *groupID, requestedModel)
+	effectiveCtx := s.withOpenAIChannelPlatformPtr(ctx, groupID)
+	mapping := s.channelService.ResolveChannelMapping(effectiveCtx, *groupID, requestedModel)
 	billingModel := billingModelForRestriction(mapping.BillingModelSource, requestedModel, mapping.MappedModel)
 	if billingModel == "" {
 		return false
 	}
-	return s.channelService.IsModelRestricted(ctx, *groupID, billingModel)
+	return s.channelService.IsModelRestricted(effectiveCtx, *groupID, billingModel)
+}
+
+func (s *OpenAIGatewayService) withOpenAIChannelPlatformPtr(ctx context.Context, groupID *int64) context.Context {
+	if groupID == nil {
+		return ctx
+	}
+	return s.withOpenAIChannelPlatform(ctx, *groupID)
+}
+
+func (s *OpenAIGatewayService) withOpenAIChannelPlatform(ctx context.Context, groupID int64) context.Context {
+	if _, ok := RequestPlatformFromContext(ctx); ok {
+		return ctx
+	}
+	if groupID <= 0 || s.channelService == nil {
+		return ctx
+	}
+	if s.channelService.GetGroupPlatform(ctx, groupID) == PlatformEntrox {
+		return WithRequestPlatform(ctx, PlatformOpenAI)
+	}
+	return ctx
 }
 
 func (s *OpenAIGatewayService) isUpstreamModelRestrictedByChannel(ctx context.Context, groupID int64, account *Account, requestedModel string, requireCompact bool) bool {
@@ -494,7 +515,7 @@ func (s *OpenAIGatewayService) isUpstreamModelRestrictedByChannel(ctx context.Co
 	if upstreamModel == "" {
 		return false
 	}
-	return s.channelService.IsModelRestricted(ctx, groupID, upstreamModel)
+	return s.channelService.IsModelRestricted(s.withOpenAIChannelPlatform(ctx, groupID), groupID, upstreamModel)
 }
 
 func (s *OpenAIGatewayService) needsUpstreamChannelRestrictionCheck(ctx context.Context, groupID *int64) bool {
@@ -5657,6 +5678,7 @@ type OpenAIRecordUsageInput struct {
 	IPAddress          string // 请求的客户端 IP 地址
 	RequestPayloadHash string
 	APIKeyService      APIKeyQuotaUpdater
+	QuotaPlatform      string
 	ChannelUsageFields
 }
 
@@ -5677,6 +5699,10 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 	user := input.User
 	account := input.Account
 	subscription := input.Subscription
+	quotaPlatform := input.QuotaPlatform
+	if quotaPlatform == "" {
+		quotaPlatform = PlatformFromAPIKey(apiKey)
+	}
 	ApplyOpenAIImageBillingResolution(result)
 
 	// 计算实际的新输入token（减去缓存读取的token）
@@ -5870,7 +5896,7 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 			IsSubscriptionBill:    isSubscriptionBilling,
 			AccountRateMultiplier: accountRateMultiplier,
 			APIKeyService:         input.APIKeyService,
-			Platform:              PlatformFromAPIKey(apiKey),
+			Platform:              quotaPlatform,
 		}, s.billingDeps(), s.usageBillingRepo)
 		return err
 	}()

@@ -163,8 +163,9 @@ func (s *GeminiMessagesCompatService) resolvePlatformAndSchedulingMode(ctx conte
 				return "", false, false, fmt.Errorf("get group failed: %w", err)
 			}
 		}
+		platform := ResolveGroupPlatform(ctx, group.Platform)
 		// gemini 分组支持混合调度（包含启用了 mixed_scheduling 的 antigravity 账户）
-		return group.Platform, group.Platform == PlatformGemini, false, nil
+		return platform, platform == PlatformGemini, false, nil
 	}
 
 	// 无分组时只使用原生 gemini 平台

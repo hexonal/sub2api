@@ -106,6 +106,8 @@
                     ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
                     : value === 'antigravity'
                       ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+                      : value === 'entrox'
+                        ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400'
                       : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
               ]"
             >
@@ -2966,6 +2968,8 @@
                         ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
                         : group.platform === 'antigravity'
                           ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+                          : group.platform === 'entrox'
+                            ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400'
                           : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
                   ]"
                 >
@@ -3138,6 +3142,7 @@ const platformOptions = computed(() => [
   { value: "openai", label: "OpenAI" },
   { value: "gemini", label: "Gemini" },
   { value: "antigravity", label: "Antigravity" },
+  { value: "entrox", label: "Entrox" },
 ]);
 
 const platformFilterOptions = computed(() => [
@@ -3146,6 +3151,7 @@ const platformFilterOptions = computed(() => [
   { value: "openai", label: "OpenAI" },
   { value: "gemini", label: "Gemini" },
   { value: "antigravity", label: "Antigravity" },
+  { value: "entrox", label: "Entrox" },
 ]);
 
 const editStatusOptions = computed(() => [
@@ -3235,7 +3241,7 @@ const invalidRequestFallbackOptionsForEdit = computed(() => {
 // 复制账号的源分组选项（创建时）- 仅包含相同平台且有账号的分组
 const copyAccountsGroupOptions = computed(() => {
   const eligibleGroups = groups.value.filter(
-    (g) => g.platform === createForm.platform && (g.account_count || 0) > 0,
+    (g) => copyAccountsPlatformMatches(g.platform, createForm.platform) && (g.account_count || 0) > 0,
   );
   return eligibleGroups.map((g) => ({
     value: g.id,
@@ -3248,7 +3254,7 @@ const copyAccountsGroupOptionsForEdit = computed(() => {
   const currentId = editingGroup.value?.id;
   const eligibleGroups = groups.value.filter(
     (g) =>
-      g.platform === editForm.platform &&
+      copyAccountsPlatformMatches(g.platform, editForm.platform) &&
       (g.account_count || 0) > 0 &&
       g.id !== currentId,
   );
@@ -3257,6 +3263,13 @@ const copyAccountsGroupOptionsForEdit = computed(() => {
     label: `${g.name} (${g.account_count || 0} 个账号)`,
   }));
 });
+
+function copyAccountsPlatformMatches(source: GroupPlatform, target: GroupPlatform): boolean {
+  if (target === "entrox") {
+    return ["anthropic", "openai", "gemini", "antigravity"].includes(source);
+  }
+  return source === target;
+}
 
 const groups = ref<AdminGroup[]>([]);
 const loading = ref(false);

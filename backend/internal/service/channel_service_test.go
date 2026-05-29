@@ -7,6 +7,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/Wei-Shaw/sub2api/internal/pkg/ctxkey"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
 	"github.com/stretchr/testify/require"
 )
@@ -264,6 +265,30 @@ func TestBuildModelMappingChain(t *testing.T) {
 			require.Equal(t, tt.want, got)
 		})
 	}
+}
+
+func TestChannelService_EntroxGroupUsesResolvedPlatformForMapping(t *testing.T) {
+	ch := Channel{
+		ID:       1,
+		Status:   StatusActive,
+		GroupIDs: []int64{10},
+		ModelMapping: map[string]map[string]string{
+			PlatformGemini: {
+				"gemini-3-pro": "gemini-3-pro-preview",
+			},
+		},
+		BillingModelSource: BillingModelSourceChannelMapped,
+	}
+	repo := makeStandardRepo(ch, map[int64]string{
+		10: PlatformEntrox,
+	})
+	svc := newTestChannelService(repo)
+	ctx := WithRequestPlatform(context.Background(), PlatformGemini)
+
+	result := svc.ResolveChannelMapping(ctx, 10, "gemini-3-pro")
+
+	require.True(t, result.Mapped)
+	require.Equal(t, "gemini-3-pro-preview", result.MappedModel)
 }
 
 // ===========================================================================
@@ -1948,7 +1973,7 @@ func TestIsPlatformPricingMatch(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.want, isPlatformPricingMatch(tt.groupPlatform, tt.pricingPlatform))
+			require.Equal(t, tt.want, isPlatformPricingMatch(channelConfigPlatformsForGroup(tt.groupPlatform), tt.pricingPlatform))
 		})
 	}
 }
@@ -1961,17 +1986,21 @@ func TestMatchingPlatforms(t *testing.T) {
 	tests := []struct {
 		name          string
 		groupPlatform string
+		ctx           context.Context
 		want          []string
 	}{
-		{"antigravity returns itself only", PlatformAntigravity, []string{PlatformAntigravity}},
-		{"anthropic returns itself", PlatformAnthropic, []string{PlatformAnthropic}},
-		{"gemini returns itself", PlatformGemini, []string{PlatformGemini}},
-		{"openai returns itself", PlatformOpenAI, []string{PlatformOpenAI}},
+		{"antigravity returns itself only", PlatformAntigravity, context.Background(), []string{PlatformAntigravity}},
+		{"anthropic returns itself", PlatformAnthropic, context.Background(), []string{PlatformAnthropic}},
+		{"gemini returns itself", PlatformGemini, context.Background(), []string{PlatformGemini}},
+		{"openai returns itself", PlatformOpenAI, context.Background(), []string{PlatformOpenAI}},
+		{"entrox returns resolved request platform", PlatformEntrox, WithRequestPlatform(context.Background(), PlatformGemini), []string{PlatformGemini}},
+		{"entrox force platform wins over request platform", PlatformEntrox, context.WithValue(WithRequestPlatform(context.Background(), PlatformGemini), ctxkey.ForcePlatform, PlatformAntigravity), []string{PlatformAntigravity}},
+		{"entrox defaults to anthropic without request platform", PlatformEntrox, context.Background(), []string{PlatformAnthropic}},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := matchingPlatforms(tt.groupPlatform)
+			result := matchingPlatforms(tt.ctx, tt.groupPlatform)
 			require.Equal(t, tt.want, result)
 		})
 	}

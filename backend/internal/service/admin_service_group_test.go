@@ -17,10 +17,18 @@ func ptrString[T ~string](v T) *string {
 
 // groupRepoStubForAdmin 用于测试 AdminService 的 GroupRepository Stub
 type groupRepoStubForAdmin struct {
-	created *Group // 记录 Create 调用的参数
-	updated *Group // 记录 Update 调用的参数
-	getByID *Group // GetByID 返回值
-	getErr  error  // GetByID 返回的错误
+	created            *Group // 记录 Create 调用的参数
+	updated            *Group // 记录 Update 调用的参数
+	getByID            *Group // GetByID 返回值
+	getErr             error  // GetByID 返回的错误
+	createID           int64
+	getByIDLiteByID    map[int64]*Group
+	accountIDsToCopy   []int64
+	boundGroupID       int64
+	boundAccountIDs    []int64
+	allowBindAccounts  bool
+	allowClearAccounts bool
+	clearedGroupID     int64
 
 	listWithFiltersCalls       int
 	listWithFiltersParams      pagination.PaginationParams
@@ -34,6 +42,9 @@ type groupRepoStubForAdmin struct {
 }
 
 func (s *groupRepoStubForAdmin) Create(_ context.Context, g *Group) error {
+	if s.createID > 0 {
+		g.ID = s.createID
+	}
 	s.created = g
 	return nil
 }
@@ -50,9 +61,16 @@ func (s *groupRepoStubForAdmin) GetByID(_ context.Context, _ int64) (*Group, err
 	return s.getByID, nil
 }
 
-func (s *groupRepoStubForAdmin) GetByIDLite(_ context.Context, _ int64) (*Group, error) {
+func (s *groupRepoStubForAdmin) GetByIDLite(_ context.Context, id int64) (*Group, error) {
 	if s.getErr != nil {
 		return nil, s.getErr
+	}
+	if s.getByIDLiteByID != nil {
+		group, ok := s.getByIDLiteByID[id]
+		if !ok {
+			return nil, ErrGroupNotFound
+		}
+		return group, nil
 	}
 	return s.getByID, nil
 }
@@ -109,16 +127,28 @@ func (s *groupRepoStubForAdmin) GetAccountCount(_ context.Context, _ int64) (int
 	panic("unexpected GetAccountCount call")
 }
 
-func (s *groupRepoStubForAdmin) DeleteAccountGroupsByGroupID(_ context.Context, _ int64) (int64, error) {
-	panic("unexpected DeleteAccountGroupsByGroupID call")
+func (s *groupRepoStubForAdmin) DeleteAccountGroupsByGroupID(_ context.Context, groupID int64) (int64, error) {
+	if !s.allowClearAccounts {
+		panic("unexpected DeleteAccountGroupsByGroupID call")
+	}
+	s.clearedGroupID = groupID
+	return 0, nil
 }
 
-func (s *groupRepoStubForAdmin) BindAccountsToGroup(_ context.Context, _ int64, _ []int64) error {
-	panic("unexpected BindAccountsToGroup call")
+func (s *groupRepoStubForAdmin) BindAccountsToGroup(_ context.Context, groupID int64, accountIDs []int64) error {
+	if !s.allowBindAccounts {
+		panic("unexpected BindAccountsToGroup call")
+	}
+	s.boundGroupID = groupID
+	s.boundAccountIDs = append([]int64(nil), accountIDs...)
+	return nil
 }
 
 func (s *groupRepoStubForAdmin) GetAccountIDsByGroupIDs(_ context.Context, _ []int64) ([]int64, error) {
-	panic("unexpected GetAccountIDsByGroupIDs call")
+	if s.accountIDsToCopy == nil {
+		panic("unexpected GetAccountIDsByGroupIDs call")
+	}
+	return append([]int64(nil), s.accountIDsToCopy...), nil
 }
 
 func (s *groupRepoStubForAdmin) UpdateSortOrders(_ context.Context, _ []GroupSortOrderUpdate) error {
@@ -416,6 +446,35 @@ func TestAdminService_CreateGroup_ClearsMessagesDispatchFieldsForNonOpenAIPlatfo
 	require.False(t, repo.created.AllowMessagesDispatch)
 	require.Empty(t, repo.created.DefaultMappedModel)
 	require.Equal(t, OpenAIMessagesDispatchModelConfig{}, repo.created.MessagesDispatchModelConfig)
+}
+
+func TestAdminService_CreateGroup_CopyAccountsAllowsRealPlatformSourcesForEntrox(t *testing.T) {
+	repo := &groupRepoStubForAdmin{
+		createID: 99,
+		getByIDLiteByID: map[int64]*Group{
+			1: {ID: 1, Platform: PlatformAnthropic, Status: StatusActive, Hydrated: true},
+			2: {ID: 2, Platform: PlatformOpenAI, Status: StatusActive, Hydrated: true},
+			3: {ID: 3, Platform: PlatformGemini, Status: StatusActive, Hydrated: true},
+			4: {ID: 4, Platform: PlatformAntigravity, Status: StatusActive, Hydrated: true},
+		},
+		accountIDsToCopy:  []int64{11, 12, 13},
+		allowBindAccounts: true,
+	}
+	svc := &adminServiceImpl{groupRepo: repo}
+
+	group, err := svc.CreateGroup(context.Background(), &CreateGroupInput{
+		Name:                        "entrox",
+		Platform:                    PlatformEntrox,
+		RateMultiplier:              1,
+		CopyAccountsFromGroupIDs:    []int64{1, 2, 3, 4},
+		ModelsListConfig:            GroupModelsListConfig{},
+		MessagesDispatchModelConfig: OpenAIMessagesDispatchModelConfig{},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, PlatformEntrox, group.Platform)
+	require.Equal(t, int64(99), repo.boundGroupID)
+	require.Equal(t, []int64{11, 12, 13}, repo.boundAccountIDs)
 }
 
 func TestAdminService_UpdateGroup_ClearsMessagesDispatchFieldsWhenPlatformChangesAwayFromOpenAI(t *testing.T) {

@@ -78,4 +78,12 @@ func TestQuotaPlatform(t *testing.T) {
 			t.Errorf("QuotaPlatform(nil) with force = %q, want %q", got, PlatformAntigravity)
 		}
 	})
+
+	t.Run("entrox group uses resolved request platform", func(t *testing.T) {
+		ctx := WithRequestPlatform(context.Background(), PlatformOpenAI)
+		apiKey := &APIKey{Group: &Group{Platform: PlatformEntrox}}
+		if got := QuotaPlatform(ctx, apiKey); got != PlatformOpenAI {
+			t.Errorf("QuotaPlatform with entrox group = %q, want %q", got, PlatformOpenAI)
+		}
+	})
 }

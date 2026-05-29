@@ -953,7 +953,7 @@ func (h *GatewayHandler) Models(c *gin.Context) {
 
 	if apiKey != nil && apiKey.Group != nil {
 		groupID = &apiKey.Group.ID
-		platform = apiKey.Group.Platform
+		platform = service.ResolveGroupPlatform(c.Request.Context(), apiKey.Group.Platform)
 	}
 	if forcedPlatform, ok := middleware2.GetForcePlatformFromContext(c); ok && strings.TrimSpace(forcedPlatform) != "" {
 		platform = forcedPlatform
@@ -968,7 +968,7 @@ func (h *GatewayHandler) Models(c *gin.Context) {
 	}
 
 	if len(availableModels) > 0 {
-		writeModelsList(c, availableModels)
+		writeCustomModelsList(c, platform, availableModels)
 		return
 	}
 

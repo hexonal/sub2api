@@ -97,6 +97,7 @@ export default {
       claude: 'Claude',
       gemini: 'Gemini',
       antigravity: 'Antigravity',
+      entrox: 'Entrox',
       more: '更多'
     },
     // CTA 区块
@@ -2177,6 +2178,7 @@ export default {
         openai: 'OpenAI',
         gemini: 'Gemini',
         antigravity: 'Antigravity',
+        entrox: 'Entrox',
       },
       saving: '保存中...',
       noGroups: '暂无分组',
@@ -3237,6 +3239,7 @@ export default {
         anthropic: 'Anthropic',
         gemini: 'Gemini',
         antigravity: 'Antigravity',
+        entrox: 'Entrox',
       },
       types: {
         oauth: 'OAuth',

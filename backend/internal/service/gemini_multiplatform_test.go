@@ -645,6 +645,42 @@ func TestGeminiMessagesCompatService_SelectAccountForModelWithExclusions_ForcePl
 	require.Equal(t, int64(1), acc.ID)
 }
 
+func TestGeminiMessagesCompatService_EntroxGroupUsesResolvedGeminiPlatform(t *testing.T) {
+	ctx := WithRequestPlatform(context.Background(), PlatformGemini)
+	groupID := int64(12)
+
+	repo := &mockAccountRepoForGemini{
+		accounts: []Account{
+			{ID: 1, Platform: PlatformOpenAI, Priority: 1, Status: StatusActive, Schedulable: true},
+			{ID: 2, Platform: PlatformGemini, Priority: 1, Status: StatusActive, Schedulable: true},
+		},
+		accountsByID: map[int64]*Account{},
+	}
+	for i := range repo.accounts {
+		repo.accountsByID[repo.accounts[i].ID] = &repo.accounts[i]
+	}
+	groupRepo := &mockGroupRepoForGemini{groups: map[int64]*Group{
+		groupID: {
+			ID:       groupID,
+			Platform: PlatformEntrox,
+			Status:   StatusActive,
+			Hydrated: true,
+		},
+	}}
+
+	svc := &GeminiMessagesCompatService{
+		accountRepo: repo,
+		groupRepo:   groupRepo,
+		cache:       &mockGatewayCacheForGemini{},
+	}
+
+	acc, err := svc.SelectAccountForModelWithExclusions(ctx, &groupID, "", "gemini-2.5-flash", nil)
+	require.NoError(t, err)
+	require.NotNil(t, acc)
+	require.Equal(t, int64(2), acc.ID)
+	require.Equal(t, PlatformGemini, acc.Platform)
+}
+
 func TestGeminiMessagesCompatService_SelectAccountForModelWithExclusions_NoModelSupport(t *testing.T) {
 	ctx := context.Background()
 

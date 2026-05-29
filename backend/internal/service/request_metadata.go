@@ -116,6 +116,34 @@ func WithAccountSwitchCount(ctx context.Context, value int, bridgeOldKeys bool) 
 	})
 }
 
+func WithRequestPlatform(ctx context.Context, platform string) context.Context {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	ctx = context.WithValue(ctx, ctxkey.RequestPlatform, platform)
+	return context.WithValue(ctx, ctxkey.Platform, platform)
+}
+
+func RequestPlatformFromContext(ctx context.Context) (string, bool) {
+	if ctx == nil {
+		return "", false
+	}
+	if platform, ok := ctx.Value(ctxkey.RequestPlatform).(string); ok && platform != "" {
+		return platform, true
+	}
+	return "", false
+}
+
+func ResolveGroupPlatform(ctx context.Context, groupPlatform string) string {
+	if groupPlatform != PlatformEntrox {
+		return groupPlatform
+	}
+	if platform, ok := RequestPlatformFromContext(ctx); ok {
+		return platform
+	}
+	return PlatformAnthropic
+}
+
 func IsMaxTokensOneHaikuRequestFromContext(ctx context.Context) (bool, bool) {
 	if md := metadataFromContext(ctx); md != nil && md.IsMaxTokensOneHaikuRequest != nil {
 		return *md.IsMaxTokensOneHaikuRequest, true

@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/Wei-Shaw/sub2api/internal/pkg/ctxkey"
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
 	"github.com/tidwall/gjson"
@@ -203,12 +204,12 @@ func newEmptyChannelCache() *channelCache {
 }
 
 // expandPricingToCache 将渠道的模型定价展开到缓存（按分组+平台维度）。
-// 各平台严格独立：antigravity 分组只匹配 antigravity 定价，不会匹配 anthropic/gemini 的定价。
-// 查找时通过 lookupPricingAcrossPlatforms() 在本平台内查找。
+// 常规平台严格独立；Entrox 分组把真实平台配置展开到同一分组，查找时再按请求平台收窄。
 func expandPricingToCache(cache *channelCache, ch *Channel, gid int64, platform string) {
+	configPlatforms := channelConfigPlatformsForGroup(platform)
 	for j := range ch.ModelPricing {
 		pricing := &ch.ModelPricing[j]
-		if !isPlatformPricingMatch(platform, pricing.Platform) {
+		if !isPlatformPricingMatch(configPlatforms, pricing.Platform) {
 			continue // 跳过非本平台的定价
 		}
 		// 使用定价条目的原始平台作为缓存 key，防止跨平台同名模型冲突
@@ -230,9 +231,9 @@ func expandPricingToCache(cache *channelCache, ch *Channel, gid int64, platform 
 }
 
 // expandMappingToCache 将渠道的模型映射展开到缓存（按分组+平台维度）。
-// 各平台严格独立：antigravity 分组只匹配 antigravity 映射。
+// 常规平台严格独立；Entrox 分组把真实平台映射展开到同一分组，查找时再按请求平台收窄。
 func expandMappingToCache(cache *channelCache, ch *Channel, gid int64, platform string) {
-	for _, mappingPlatform := range matchingPlatforms(platform) {
+	for _, mappingPlatform := range channelConfigPlatformsForGroup(platform) {
 		platformMapping, ok := ch.ModelMapping[mappingPlatform]
 		if !ok {
 			continue
@@ -332,16 +333,37 @@ func populateChannelCache(channels []Channel, groupPlatforms map[int64]string) *
 // invalidateCache 使缓存失效，让下次读取时自然重建
 
 // isPlatformPricingMatch 判断定价条目的平台是否匹配分组平台。
-// 各平台（antigravity / anthropic / gemini / openai）严格独立，不跨平台匹配。
-func isPlatformPricingMatch(groupPlatform, pricingPlatform string) bool {
-	return groupPlatform == pricingPlatform
+func isPlatformPricingMatch(groupPlatforms []string, pricingPlatform string) bool {
+	for _, platform := range groupPlatforms {
+		if platform == pricingPlatform {
+			return true
+		}
+	}
+	return false
 }
 
 // matchingPlatforms 返回分组平台对应的可匹配平台列表。
-// 各平台严格独立，只返回自身。
-func matchingPlatforms(groupPlatform string) []string {
+// Entrox 分组按请求解析出的有效平台匹配。
+func matchingPlatforms(ctx context.Context, groupPlatform string) []string {
+	if groupPlatform == PlatformEntrox {
+		if platform, ok := ctx.Value(ctxkey.ForcePlatform).(string); ok && platform != "" {
+			return []string{platform}
+		}
+		if platform, ok := RequestPlatformFromContext(ctx); ok {
+			return []string{platform}
+		}
+		return []string{PlatformAnthropic}
+	}
 	return []string{groupPlatform}
 }
+
+func channelConfigPlatformsForGroup(groupPlatform string) []string {
+	if groupPlatform == PlatformEntrox {
+		return []string{PlatformAnthropic, PlatformOpenAI, PlatformGemini, PlatformAntigravity}
+	}
+	return []string{groupPlatform}
+}
+
 func (s *ChannelService) invalidateCache() {
 	s.cache.Store((*channelCache)(nil))
 	s.cacheSF.Forget("channel_cache")
@@ -376,17 +398,16 @@ func (c *channelCache) matchWildcardMapping(groupID int64, platform, modelLower 
 	return ""
 }
 
-// lookupPricingAcrossPlatforms 在分组平台内查找模型定价。
-// 各平台严格独立，只在本平台内查找（先精确匹配，再通配符）。
-func lookupPricingAcrossPlatforms(cache *channelCache, groupID int64, groupPlatform, modelLower string) *ChannelModelPricing {
-	for _, p := range matchingPlatforms(groupPlatform) {
+// lookupPricingAcrossPlatforms 在有效平台内查找模型定价。
+func lookupPricingAcrossPlatforms(ctx context.Context, cache *channelCache, groupID int64, groupPlatform, modelLower string) *ChannelModelPricing {
+	for _, p := range matchingPlatforms(ctx, groupPlatform) {
 		key := channelModelKey{groupID: groupID, platform: p, model: modelLower}
 		if pricing, ok := cache.pricingByGroupModel[key]; ok {
 			return pricing
 		}
 	}
 	// 精确查找全部失败，依次尝试通配符匹配
-	for _, p := range matchingPlatforms(groupPlatform) {
+	for _, p := range matchingPlatforms(ctx, groupPlatform) {
 		if pricing := cache.matchWildcard(groupID, p, modelLower); pricing != nil {
 			return pricing
 		}
@@ -394,16 +415,15 @@ func lookupPricingAcrossPlatforms(cache *channelCache, groupID int64, groupPlatf
 	return nil
 }
 
-// lookupMappingAcrossPlatforms 在分组平台内查找模型映射。
-// 逻辑与 lookupPricingAcrossPlatforms 相同：先精确查找，再通配符。
-func lookupMappingAcrossPlatforms(cache *channelCache, groupID int64, groupPlatform, modelLower string) string {
-	for _, p := range matchingPlatforms(groupPlatform) {
+// lookupMappingAcrossPlatforms 在有效平台内查找模型映射。
+func lookupMappingAcrossPlatforms(ctx context.Context, cache *channelCache, groupID int64, groupPlatform, modelLower string) string {
+	for _, p := range matchingPlatforms(ctx, groupPlatform) {
 		key := channelModelKey{groupID: groupID, platform: p, model: modelLower}
 		if mapped, ok := cache.mappingByGroupModel[key]; ok {
 			return mapped
 		}
 	}
-	for _, p := range matchingPlatforms(groupPlatform) {
+	for _, p := range matchingPlatforms(ctx, groupPlatform) {
 		if mapped := cache.matchWildcardMapping(groupID, p, modelLower); mapped != "" {
 			return mapped
 		}
@@ -461,7 +481,6 @@ func (s *ChannelService) lookupGroupChannel(ctx context.Context, groupID int64) 
 }
 
 // GetChannelModelPricing 获取指定分组+模型的渠道定价（热路径 O(1)）。
-// 各平台严格独立，只在本平台内查找定价。
 func (s *ChannelService) GetChannelModelPricing(ctx context.Context, groupID int64, model string) *ChannelModelPricing {
 	lk, err := s.lookupGroupChannel(ctx, groupID)
 	if err != nil {
@@ -473,7 +492,7 @@ func (s *ChannelService) GetChannelModelPricing(ctx context.Context, groupID int
 	}
 
 	modelLower := strings.ToLower(model)
-	pricing := lookupPricingAcrossPlatforms(lk.cache, groupID, lk.platform, modelLower)
+	pricing := lookupPricingAcrossPlatforms(ctx, lk.cache, groupID, lk.platform, modelLower)
 	if pricing == nil {
 		return nil
 	}
@@ -492,7 +511,7 @@ func (s *ChannelService) ResolveChannelMapping(ctx context.Context, groupID int6
 	if lk == nil {
 		return ChannelMappingResult{MappedModel: model}
 	}
-	return resolveMapping(lk, groupID, model)
+	return resolveMapping(ctx, lk, groupID, model)
 }
 
 // IsModelRestricted 检查模型是否被渠道限制。
@@ -506,7 +525,7 @@ func (s *ChannelService) IsModelRestricted(ctx context.Context, groupID int64, m
 	if lk == nil {
 		return false
 	}
-	return checkRestricted(lk, groupID, model)
+	return checkRestricted(ctx, lk, groupID, model)
 }
 
 // ResolveChannelMappingAndRestrict 解析渠道映射。
@@ -520,12 +539,11 @@ func (s *ChannelService) ResolveChannelMappingAndRestrict(ctx context.Context, g
 	if lk == nil {
 		return ChannelMappingResult{MappedModel: model}, false
 	}
-	return resolveMapping(lk, *groupID, model), false
+	return resolveMapping(ctx, lk, *groupID, model), false
 }
 
 // resolveMapping 基于已查找的渠道信息解析模型映射。
-// antigravity 分组依次尝试所有匹配平台，确保跨平台同名映射各自独立。
-func resolveMapping(lk *channelLookup, groupID int64, model string) ChannelMappingResult {
+func resolveMapping(ctx context.Context, lk *channelLookup, groupID int64, model string) ChannelMappingResult {
 	// lk.channel 来自已装填的缓存，BillingModelSource 已在 populateChannelCache 阶段归一化，
 	// 这里无需重复兜底。
 	result := ChannelMappingResult{
@@ -535,7 +553,7 @@ func resolveMapping(lk *channelLookup, groupID int64, model string) ChannelMappi
 	}
 
 	modelLower := strings.ToLower(model)
-	if mapped := lookupMappingAcrossPlatforms(lk.cache, groupID, lk.platform, modelLower); mapped != "" {
+	if mapped := lookupMappingAcrossPlatforms(ctx, lk.cache, groupID, lk.platform, modelLower); mapped != "" {
 		result.MappedModel = mapped
 		result.Mapped = true
 	}
@@ -544,14 +562,13 @@ func resolveMapping(lk *channelLookup, groupID int64, model string) ChannelMappi
 }
 
 // checkRestricted 基于已查找的渠道信息检查模型是否被限制。
-// 只在本平台的定价列表中查找。
-func checkRestricted(lk *channelLookup, groupID int64, model string) bool {
+func checkRestricted(ctx context.Context, lk *channelLookup, groupID int64, model string) bool {
 	if !lk.channel.RestrictModels {
 		return false
 	}
 	modelLower := strings.ToLower(model)
 	// 使用与查找定价相同的跨平台逻辑
-	if lookupPricingAcrossPlatforms(lk.cache, groupID, lk.platform, modelLower) != nil {
+	if lookupPricingAcrossPlatforms(ctx, lk.cache, groupID, lk.platform, modelLower) != nil {
 		return false
 	}
 	return true

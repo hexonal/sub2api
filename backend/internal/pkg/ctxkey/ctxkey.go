@@ -20,6 +20,9 @@ const (
 	// Platform 当前请求最终命中的平台（用于统一请求链路日志字段）。
 	Platform Key = "ctx_platform"
 
+	// RequestPlatform 当前请求解析出的有效平台（用于 Entrox 聚合分组调度）。
+	RequestPlatform Key = "ctx_request_platform"
+
 	// AccountID 当前请求最终命中的账号 ID（用于统一请求链路日志字段）。
 	AccountID Key = "ctx_account_id"
 

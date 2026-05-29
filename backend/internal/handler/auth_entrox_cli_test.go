@@ -13,7 +13,7 @@ import (
 func TestStartEntroxCLIAuthCreatesPollableSession(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	h := NewAuthHandler(nil, nil, nil, nil, nil, nil, nil, nil)
+	h := NewAuthHandler(nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	r := gin.New()
 	r.POST("/start", h.StartEntroxCLIAuth)
 	r.GET("/poll", h.PollEntroxCLIAuth)
@@ -50,7 +50,7 @@ func TestStartEntroxCLIAuthCreatesPollableSession(t *testing.T) {
 func TestEntroxCLIScript(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	h := NewAuthHandler(nil, nil, nil, nil, nil, nil, nil, nil)
+	h := NewAuthHandler(nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	r := gin.New()
 	r.GET("/cli.sh", h.EntroxCLIScript)
 

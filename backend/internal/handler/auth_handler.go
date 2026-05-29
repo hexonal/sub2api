@@ -19,31 +19,36 @@ import (
 
 // AuthHandler handles authentication-related requests
 type AuthHandler struct {
-	cfg           *config.Config
-	authService   *service.AuthService
-	userService   *service.UserService
-	settingSvc    *service.SettingService
-	promoService  *service.PromoService
-	redeemService *service.RedeemService
-	totpService   *service.TotpService
-	apiKeyService *service.APIKeyService
+	cfg                  *config.Config
+	authService          *service.AuthService
+	userService          *service.UserService
+	settingSvc           *service.SettingService
+	promoService         *service.PromoService
+	redeemService        *service.RedeemService
+	totpService          *service.TotpService
+	apiKeyService        *service.APIKeyService
+	userAttributeService *service.UserAttributeService
+
+	dingTalkClientInstance *DingTalkClient
+	dingTalkClientMu       sync.Mutex
 
 	entroxCLIMu       sync.Mutex
 	entroxCLISessions map[string]*entroxCLISession
 }
 
 // NewAuthHandler creates a new AuthHandler
-func NewAuthHandler(cfg *config.Config, authService *service.AuthService, userService *service.UserService, settingService *service.SettingService, promoService *service.PromoService, redeemService *service.RedeemService, totpService *service.TotpService, apiKeyService *service.APIKeyService) *AuthHandler {
+func NewAuthHandler(cfg *config.Config, authService *service.AuthService, userService *service.UserService, settingService *service.SettingService, promoService *service.PromoService, redeemService *service.RedeemService, totpService *service.TotpService, apiKeyService *service.APIKeyService, userAttributeService *service.UserAttributeService) *AuthHandler {
 	return &AuthHandler{
-		cfg:               cfg,
-		authService:       authService,
-		userService:       userService,
-		settingSvc:        settingService,
-		promoService:      promoService,
-		redeemService:     redeemService,
-		totpService:       totpService,
-		apiKeyService:     apiKeyService,
-		entroxCLISessions: make(map[string]*entroxCLISession),
+		cfg:                  cfg,
+		authService:          authService,
+		userService:          userService,
+		settingSvc:           settingService,
+		promoService:         promoService,
+		redeemService:        redeemService,
+		totpService:          totpService,
+		apiKeyService:        apiKeyService,
+		userAttributeService: userAttributeService,
+		entroxCLISessions:    make(map[string]*entroxCLISession),
 	}
 }
 
@@ -204,7 +209,7 @@ func (h *AuthHandler) SendVerifyCode(c *gin.Context) {
 		return
 	}
 
-	result, err := h.authService.SendVerifyCodeAsync(c.Request.Context(), req.Email)
+	result, err := h.authService.SendVerifyCodeAsync(c.Request.Context(), req.Email, c.GetHeader("Accept-Language"))
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return
@@ -603,7 +608,7 @@ func (h *AuthHandler) ForgotPassword(c *gin.Context) {
 
 	// Request password reset (async)
 	// Note: This returns success even if email doesn't exist (to prevent enumeration)
-	if err := h.authService.RequestPasswordResetAsync(c.Request.Context(), req.Email, frontendBaseURL); err != nil {
+	if err := h.authService.RequestPasswordResetAsync(c.Request.Context(), req.Email, frontendBaseURL, c.GetHeader("Accept-Language")); err != nil {
 		response.ErrorFrom(c, err)
 		return
 	}

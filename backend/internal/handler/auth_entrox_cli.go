@@ -1,12 +1,14 @@
 package handler
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"net/http"
 	"strings"
 	"time"
 
+	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
 	middleware2 "github.com/Wei-Shaw/sub2api/internal/server/middleware"
 	"github.com/Wei-Shaw/sub2api/internal/service"
@@ -20,6 +22,8 @@ type entroxCLISession struct {
 	ID        string
 	PollToken string
 	APIKey    string
+	APIKeyID  int64
+	Created   bool
 	Approving bool
 	UserID    int64
 	CreatedAt time.Time
@@ -28,6 +32,14 @@ type entroxCLISession struct {
 
 type approveEntroxCLIRequest struct {
 	SessionID string `json:"session_id" binding:"required"`
+	APIKeyID  *int64 `json:"api_key_id"`
+	CreateNew bool   `json:"create_new"`
+}
+
+type approveEntroxCLIResponse struct {
+	Status   string `json:"status"`
+	APIKeyID int64  `json:"api_key_id,omitempty"`
+	Created  bool   `json:"created"`
 }
 
 func (h *AuthHandler) EntroxCLIScript(c *gin.Context) {
@@ -117,6 +129,10 @@ func (h *AuthHandler) ApproveEntroxCLIAuth(c *gin.Context) {
 		response.BadRequest(c, "Invalid request: "+err.Error())
 		return
 	}
+	if err := validateApproveEntroxCLIRequest(req); err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
 	sessionID := strings.TrimSpace(req.SessionID)
 
 	now := time.Now()
@@ -135,8 +151,13 @@ func (h *AuthHandler) ApproveEntroxCLIAuth(c *gin.Context) {
 		return
 	}
 	if session.APIKey != "" {
+		resp := approveEntroxCLIResponse{
+			Status:   "approved",
+			APIKeyID: session.APIKeyID,
+			Created:  session.Created,
+		}
 		h.entroxCLIMu.Unlock()
-		response.Success(c, gin.H{"status": "approved"})
+		response.Success(c, resp)
 		return
 	}
 	if session.Approving {
@@ -147,9 +168,7 @@ func (h *AuthHandler) ApproveEntroxCLIAuth(c *gin.Context) {
 	session.Approving = true
 	h.entroxCLIMu.Unlock()
 
-	key, err := h.apiKeyService.Create(c.Request.Context(), subject.UserID, service.CreateAPIKeyRequest{
-		Name: "entrox CLI " + now.Format("2006-01-02 15:04"),
-	})
+	key, created, err := h.resolveEntroxCLIAPIKey(c.Request.Context(), subject.UserID, req, now)
 	if err != nil {
 		h.entroxCLIMu.Lock()
 		if session := h.entroxCLISessions[sessionID]; session != nil {
@@ -173,10 +192,54 @@ func (h *AuthHandler) ApproveEntroxCLIAuth(c *gin.Context) {
 		return
 	}
 	session.APIKey = key.Key
+	session.APIKeyID = key.ID
+	session.Created = created
 	session.UserID = subject.UserID
 	session.Approving = false
 
-	response.Success(c, gin.H{"status": "approved"})
+	response.Success(c, approveEntroxCLIResponse{
+		Status:   "approved",
+		APIKeyID: key.ID,
+		Created:  created,
+	})
+}
+
+func validateApproveEntroxCLIRequest(req approveEntroxCLIRequest) error {
+	hasKeyID := req.APIKeyID != nil
+	if hasKeyID && *req.APIKeyID <= 0 {
+		return infraerrors.BadRequest("ENTROX_API_KEY_INVALID", "api key id must be positive")
+	}
+	if hasKeyID == req.CreateNew {
+		return infraerrors.BadRequest(
+			"ENTROX_API_KEY_CHOICE_REQUIRED",
+			"choose an existing api key or create a new one",
+		)
+	}
+	return nil
+}
+
+func (h *AuthHandler) resolveEntroxCLIAPIKey(ctx context.Context, userID int64, req approveEntroxCLIRequest, now time.Time) (*service.APIKey, bool, error) {
+	if req.APIKeyID != nil {
+		key, err := h.apiKeyService.GetByID(ctx, *req.APIKeyID)
+		if err != nil {
+			return nil, false, err
+		}
+		if key.UserID != userID {
+			return nil, false, service.ErrInsufficientPerms
+		}
+		if key.Key == "" || !key.IsActive() || key.IsExpired() || key.IsQuotaExhausted() {
+			return nil, false, infraerrors.BadRequest("ENTROX_API_KEY_UNAVAILABLE", "api key is not available")
+		}
+		return key, false, nil
+	}
+
+	key, err := h.apiKeyService.Create(ctx, userID, service.CreateAPIKeyRequest{
+		Name: "entrox CLI " + now.Format("2006-01-02 15:04"),
+	})
+	if err != nil {
+		return nil, false, err
+	}
+	return key, true, nil
 }
 
 func (h *AuthHandler) cleanupExpiredEntroxCLISessionsLocked(now time.Time) {

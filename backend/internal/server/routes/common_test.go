@@ -81,8 +81,26 @@ func TestRegisterCommonRoutesWellKnownOpenCode(t *testing.T) {
 		t.Fatalf("expected env apiKey, got %#v", options["apiKey"])
 	}
 	models := entrox["models"].(map[string]any)
-	if _, ok := models["gpt-5.4"]; !ok {
+	gptModel, ok := models["gpt-5.4"].(map[string]any)
+	if !ok {
 		t.Fatalf("expected gpt-5.4 model in Entrox provider")
+	}
+	if _, ok := gptModel["provider"]; ok {
+		t.Fatalf("expected gpt model to use provider-level openai-compatible config")
+	}
+	claudeModel, ok := models["claude-sonnet-4-6"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected claude-sonnet-4-6 model in Entrox provider")
+	}
+	claudeProvider := claudeModel["provider"].(map[string]any)
+	if claudeProvider["npm"] != "@ai-sdk/anthropic" {
+		t.Fatalf("expected claude model to use anthropic provider override, got %#v", claudeProvider["npm"])
+	}
+	if claudeProvider["api"] != "https://sub2api.example.test/v1" {
+		t.Fatalf("expected claude model api URL, got %#v", claudeProvider["api"])
+	}
+	if claudeModel["tool_call"] != true {
+		t.Fatalf("expected claude model tool_call to be enabled")
 	}
 	if _, ok := models["gpt-image-1"]; ok {
 		t.Fatalf("expected image-only models to be hidden from entrox model picker")

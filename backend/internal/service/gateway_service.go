@@ -9837,6 +9837,52 @@ func (s *GatewayService) GetAvailableModels(ctx context.Context, groupID *int64,
 	return cloneStringSlice(models)
 }
 
+// GetAvailableModelsByPlatform returns schedulable real account platforms and configured model_mapping keys.
+func (s *GatewayService) GetAvailableModelsByPlatform(ctx context.Context, groupID *int64) map[string][]string {
+	var accounts []Account
+	var err error
+	if groupID != nil {
+		accounts, err = s.accountRepo.ListSchedulableByGroupID(ctx, *groupID)
+	} else {
+		accounts, err = s.accountRepo.ListSchedulable(ctx)
+	}
+	if err != nil || len(accounts) == 0 {
+		return nil
+	}
+
+	modelSets := make(map[string]map[string]struct{})
+	for _, acc := range accounts {
+		platform := strings.TrimSpace(acc.Platform)
+		if platform == "" {
+			continue
+		}
+		if modelSets[platform] == nil {
+			modelSets[platform] = make(map[string]struct{})
+		}
+		mapping := acc.GetModelMapping()
+		if len(mapping) == 0 {
+			continue
+		}
+		for model := range mapping {
+			model = strings.TrimSpace(model)
+			if model != "" {
+				modelSets[platform][model] = struct{}{}
+			}
+		}
+	}
+
+	out := make(map[string][]string, len(modelSets))
+	for platform, modelSet := range modelSets {
+		models := make([]string, 0, len(modelSet))
+		for model := range modelSet {
+			models = append(models, model)
+		}
+		sort.Strings(models)
+		out[platform] = models
+	}
+	return out
+}
+
 func (s *GatewayService) InvalidateAvailableModelsCache(groupID *int64, platform string) {
 	if s == nil || s.modelsListCache == nil {
 		return

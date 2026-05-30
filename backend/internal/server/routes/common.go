@@ -4,14 +4,12 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/Wei-Shaw/sub2api/internal/pkg/claude"
-	"github.com/Wei-Shaw/sub2api/internal/pkg/openai"
-
 	"github.com/gin-gonic/gin"
 )
 
 const sub2APIOpenCodeTokenEnv = "SUB2API_API_KEY"
 const sub2APIOpenCodeProviderID = "entrox"
+const sub2APIOpenCodeDynamicConfigPath = "/api/v1/entrox/opencode/config"
 
 // RegisterCommonRoutes 注册通用路由（健康检查、状态等）
 func RegisterCommonRoutes(r *gin.Engine) {
@@ -22,7 +20,6 @@ func RegisterCommonRoutes(r *gin.Engine) {
 
 	r.GET("/.well-known/opencode", func(c *gin.Context) {
 		origin := requestOrigin(c)
-		apiURL := origin + "/v1"
 
 		c.JSON(http.StatusOK, gin.H{
 			"auth": gin.H{
@@ -39,17 +36,11 @@ func RegisterCommonRoutes(r *gin.Engine) {
 				"$schema":     "https://opencode.ai/config.json",
 				"model":       sub2APIOpenCodeProviderID + "/gpt-5.4",
 				"small_model": sub2APIOpenCodeProviderID + "/gpt-5.4-mini",
-				"provider": gin.H{
-					sub2APIOpenCodeProviderID: gin.H{
-						"name": "Entrox",
-						"npm":  "@ai-sdk/openai-compatible",
-						"api":  apiURL,
-						"options": gin.H{
-							"baseURL": apiURL,
-							"apiKey":  "{env:" + sub2APIOpenCodeTokenEnv + "}",
-						},
-						"models": sub2APIOpenCodeModels(apiURL),
-					},
+			},
+			"remote_config": gin.H{
+				"url": origin + sub2APIOpenCodeDynamicConfigPath,
+				"headers": gin.H{
+					"Authorization": "Bearer {env:" + sub2APIOpenCodeTokenEnv + "}",
 				},
 			},
 		})
@@ -92,44 +83,6 @@ func requestOrigin(c *gin.Context) string {
 	}
 
 	return scheme + "://" + host
-}
-
-func sub2APIOpenCodeModels(apiURL string) gin.H {
-	models := gin.H{}
-	for _, model := range openai.DefaultModels {
-		if strings.Contains(model.ID, "image") {
-			continue
-		}
-		models[model.ID] = sub2APIOpenCodeModel(model.DisplayName, strings.HasPrefix(model.ID, "gpt-5"), nil)
-	}
-	for _, model := range claude.DefaultModels {
-		models[model.ID] = sub2APIOpenCodeModel(model.DisplayName, false, gin.H{
-			"npm": "@ai-sdk/anthropic",
-			"api": apiURL,
-		})
-	}
-	return models
-}
-
-func sub2APIOpenCodeModel(name string, reasoning bool, provider gin.H) gin.H {
-	model := gin.H{
-		"name":       name,
-		"tool_call":  true,
-		"reasoning":  reasoning,
-		"attachment": true,
-		"modalities": gin.H{
-			"input":  []string{"text", "image"},
-			"output": []string{"text"},
-		},
-		"limit": gin.H{
-			"context": 200000,
-			"output":  32768,
-		},
-	}
-	if provider != nil {
-		model["provider"] = provider
-	}
-	return model
 }
 
 func firstHeaderValue(value string) string {

@@ -220,6 +220,8 @@ func RegisterGatewayRoutes(
 	// Antigravity 模型列表
 	r.GET("/antigravity/models", gin.HandlerFunc(apiKeyAuth), requireGroupAnthropic, h.Gateway.AntigravityModels)
 
+	r.GET("/api/v1/entrox/opencode/config", gin.HandlerFunc(apiKeyAuth), requireGroupAnthropic, h.Gateway.EntroxOpenCodeConfig)
+
 	// Antigravity 专用路由（仅使用 antigravity 账户，不混合调度）
 	antigravityV1 := r.Group("/antigravity/v1")
 	antigravityV1.Use(bodyLimit)

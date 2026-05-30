@@ -32,6 +32,36 @@ type gatewayModelItemForTest struct {
 	CreatedAt string `json:"created_at"`
 }
 
+type entroxOpenCodeConfigResponseForTest struct {
+	Config struct {
+		Model      string                                           `json:"model"`
+		SmallModel string                                           `json:"small_model"`
+		Provider   map[string]entroxOpenCodeProviderResponseForTest `json:"provider"`
+	} `json:"config"`
+}
+
+type entroxOpenCodeProviderResponseForTest struct {
+	Name    string                                        `json:"name"`
+	NPM     string                                        `json:"npm"`
+	API     string                                        `json:"api"`
+	Options map[string]string                             `json:"options"`
+	Models  map[string]entroxOpenCodeModelResponseForTest `json:"models"`
+}
+
+type entroxOpenCodeModelResponseForTest struct {
+	Name       string                              `json:"name"`
+	ToolCall   bool                                `json:"tool_call"`
+	Reasoning  bool                                `json:"reasoning"`
+	Provider   *entroxOpenCodeModelProviderForTest `json:"provider"`
+	Modalities map[string][]string                 `json:"modalities"`
+	Limit      map[string]float64                  `json:"limit"`
+}
+
+type entroxOpenCodeModelProviderForTest struct {
+	NPM string `json:"npm"`
+	API string `json:"api"`
+}
+
 func (s *gatewayModelsAccountRepoStub) ListSchedulableByGroupID(ctx context.Context, groupID int64) ([]service.Account, error) {
 	accounts, ok := s.byGroup[groupID]
 	if !ok {
@@ -50,6 +80,156 @@ func newGatewayModelsHandlerForTest(repo service.AccountRepository) *GatewayHand
 			nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
 		),
 	}
+}
+
+func TestEntroxOpenCodeConfigAggregatesConfiguredModelsAcrossBoundAccounts(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	groupID := int64(29)
+	h := newGatewayModelsHandlerForTest(
+		&gatewayModelsAccountRepoStub{
+			byGroup: map[int64][]service.Account{
+				groupID: {
+					{
+						ID:       1,
+						Platform: service.PlatformOpenAI,
+						Credentials: map[string]any{
+							"model_mapping": map[string]any{
+								"gpt-5.4":   "gpt-5.4",
+								"gpt-image": "gpt-image",
+							},
+						},
+					},
+					{
+						ID:       2,
+						Platform: service.PlatformAnthropic,
+						Credentials: map[string]any{
+							"model_mapping": map[string]any{
+								"claude-sonnet-4-6": "claude-sonnet-4-6",
+							},
+						},
+					},
+					{
+						ID:       3,
+						Platform: service.PlatformGemini,
+						Credentials: map[string]any{
+							"model_mapping": map[string]any{
+								"gemini-2.5-flash": "gemini-2.5-flash",
+							},
+						},
+					},
+				},
+			},
+		},
+	)
+
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodGet, "/api/v1/entrox/opencode/config", nil)
+	c.Set(string(middleware2.ContextKeyAPIKey), &service.APIKey{
+		Group: &service.Group{ID: groupID, Platform: service.PlatformEntrox},
+	})
+
+	h.EntroxOpenCodeConfig(c)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	var got entroxOpenCodeConfigResponseForTest
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
+	require.Equal(t, "entrox/gpt-5.4", got.Config.Model)
+	require.Equal(t, "entrox/gpt-5.4", got.Config.SmallModel)
+
+	openaiProvider := got.Config.Provider["entrox"]
+	require.Equal(t, "Entrox", openaiProvider.Name)
+	require.Equal(t, "@ai-sdk/openai-compatible", openaiProvider.NPM)
+	require.Equal(t, "http://example.com/v1", openaiProvider.API)
+	require.Contains(t, openaiProvider.Models, "gpt-5.4")
+	require.NotContains(t, openaiProvider.Models, "gpt-image")
+
+	anthropicProvider := got.Config.Provider["entrox-anthropic"]
+	require.Equal(t, "Entrox", anthropicProvider.Name)
+	require.Equal(t, "@ai-sdk/anthropic", anthropicProvider.NPM)
+	require.Contains(t, anthropicProvider.Models, "claude-sonnet-4-6")
+
+	geminiProvider := got.Config.Provider["entrox-gemini"]
+	require.Equal(t, "Entrox", geminiProvider.Name)
+	require.Equal(t, "@ai-sdk/google", geminiProvider.NPM)
+	require.Equal(t, "http://example.com/v1beta", geminiProvider.API)
+	require.Contains(t, geminiProvider.Models, "gemini-2.5-flash")
+	require.True(t, geminiProvider.Models["gemini-2.5-flash"].ToolCall)
+	require.Equal(t, []string{"text", "image"}, geminiProvider.Models["gemini-2.5-flash"].Modalities["input"])
+}
+
+func TestEntroxOpenCodeConfigOnlyShowsConfiguredPlatforms(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	groupID := int64(30)
+	h := newGatewayModelsHandlerForTest(
+		&gatewayModelsAccountRepoStub{
+			byGroup: map[int64][]service.Account{
+				groupID: {
+					{ID: 1, Platform: service.PlatformOpenAI},
+				},
+			},
+		},
+	)
+
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodGet, "/api/v1/entrox/opencode/config", nil)
+	c.Set(string(middleware2.ContextKeyAPIKey), &service.APIKey{
+		Group: &service.Group{ID: groupID, Platform: service.PlatformEntrox},
+	})
+
+	h.EntroxOpenCodeConfig(c)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	var got entroxOpenCodeConfigResponseForTest
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
+	require.Contains(t, got.Config.Provider, "entrox")
+	require.NotContains(t, got.Config.Provider, "entrox-anthropic")
+	require.NotContains(t, got.Config.Provider, "entrox-gemini")
+	require.Contains(t, got.Config.Provider["entrox"].Models, "gpt-5.4")
+}
+
+func TestEntroxOpenCodeConfigUsesAvailableSmallModel(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	groupID := int64(31)
+	h := newGatewayModelsHandlerForTest(
+		&gatewayModelsAccountRepoStub{
+			byGroup: map[int64][]service.Account{
+				groupID: {
+					{
+						ID:       1,
+						Platform: service.PlatformGemini,
+						Credentials: map[string]any{
+							"model_mapping": map[string]any{
+								"gemini-2.5-flash": "gemini-2.5-flash",
+							},
+						},
+					},
+				},
+			},
+		},
+	)
+
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodGet, "/api/v1/entrox/opencode/config", nil)
+	c.Set(string(middleware2.ContextKeyAPIKey), &service.APIKey{
+		Group: &service.Group{ID: groupID, Platform: service.PlatformEntrox},
+	})
+
+	h.EntroxOpenCodeConfig(c)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	var got entroxOpenCodeConfigResponseForTest
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
+	require.Equal(t, "entrox-gemini/gemini-2.5-flash", got.Config.Model)
+	require.Equal(t, "entrox-gemini/gemini-2.5-flash", got.Config.SmallModel)
 }
 
 func TestGatewayModels_GeminiGroupFallsBackToGeminiModels(t *testing.T) {

@@ -59,50 +59,22 @@ func TestRegisterCommonRoutesWellKnownOpenCode(t *testing.T) {
 	if config["small_model"] != sub2APIOpenCodeProviderID+"/gpt-5.4-mini" {
 		t.Fatalf("expected Entrox small model, got %#v", config["small_model"])
 	}
-	provider := config["provider"].(map[string]any)
-	if _, ok := provider["openai"]; ok {
-		t.Fatalf("expected well-known config not to override built-in openai provider")
+	if _, ok := config["provider"]; ok {
+		t.Fatalf("expected well-known provider config to be loaded dynamically")
 	}
-	entrox := provider[sub2APIOpenCodeProviderID].(map[string]any)
-	if entrox["name"] != "Entrox" {
-		t.Fatalf("expected Entrox provider name, got %#v", entrox["name"])
-	}
-	if entrox["api"] != "https://sub2api.example.test/v1" {
-		t.Fatalf("expected Entrox api URL, got %#v", entrox["api"])
-	}
-	if entrox["npm"] != "@ai-sdk/openai-compatible" {
-		t.Fatalf("expected openai-compatible provider, got %#v", entrox["npm"])
-	}
-	options := entrox["options"].(map[string]any)
-	if options["baseURL"] != "https://sub2api.example.test/v1" {
-		t.Fatalf("expected Entrox baseURL, got %#v", options["baseURL"])
-	}
-	if options["apiKey"] != "{env:"+sub2APIOpenCodeTokenEnv+"}" {
-		t.Fatalf("expected env apiKey, got %#v", options["apiKey"])
-	}
-	models := entrox["models"].(map[string]any)
-	gptModel, ok := models["gpt-5.4"].(map[string]any)
+
+	remoteConfig, ok := body["remote_config"].(map[string]any)
 	if !ok {
-		t.Fatalf("expected gpt-5.4 model in Entrox provider")
+		t.Fatalf("expected remote_config object, got %#v", body["remote_config"])
 	}
-	if _, ok := gptModel["provider"]; ok {
-		t.Fatalf("expected gpt model to use provider-level openai-compatible config")
+	if remoteConfig["url"] != "https://sub2api.example.test/api/v1/entrox/opencode/config" {
+		t.Fatalf("expected dynamic config URL, got %#v", remoteConfig["url"])
 	}
-	claudeModel, ok := models["claude-sonnet-4-6"].(map[string]any)
+	headers, ok := remoteConfig["headers"].(map[string]any)
 	if !ok {
-		t.Fatalf("expected claude-sonnet-4-6 model in Entrox provider")
+		t.Fatalf("expected remote_config headers object, got %#v", remoteConfig["headers"])
 	}
-	claudeProvider := claudeModel["provider"].(map[string]any)
-	if claudeProvider["npm"] != "@ai-sdk/anthropic" {
-		t.Fatalf("expected claude model to use anthropic provider override, got %#v", claudeProvider["npm"])
-	}
-	if claudeProvider["api"] != "https://sub2api.example.test/v1" {
-		t.Fatalf("expected claude model api URL, got %#v", claudeProvider["api"])
-	}
-	if claudeModel["tool_call"] != true {
-		t.Fatalf("expected claude model tool_call to be enabled")
-	}
-	if _, ok := models["gpt-image-1"]; ok {
-		t.Fatalf("expected image-only models to be hidden from entrox model picker")
+	if headers["Authorization"] != "Bearer {env:"+sub2APIOpenCodeTokenEnv+"}" {
+		t.Fatalf("expected auth header env substitution, got %#v", headers["Authorization"])
 	}
 }

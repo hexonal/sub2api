@@ -400,10 +400,34 @@ const { t } = useI18n()
 const authStore = useAuthStore()
 const appStore = useAppStore()
 
+const defaultSiteName = 'Entrox Studio'
+const defaultSiteSubtitle =
+  '连接顶级模型与 Entrox Desktop / CLI，把模型接入、项目会话、Agent 工作流和长程编码任务统一到一个可控的桌面体验'
+
+const normalizeEntroxBranding = (value: string | undefined, fallback: string) => {
+  const trimmed = value?.trim()
+  if (
+    !trimmed ||
+    trimmed === 'Sub2API' ||
+    trimmed === 'AI API Gateway Platform' ||
+    trimmed === 'Subscription to API Conversion Platform'
+  ) {
+    return fallback
+  }
+  return trimmed
+    .replace(/\bEntro Studio\b/g, 'Entrox Studio')
+    .replace(/\bEntro Desktop\b/g, 'Entrox Desktop')
+    .replace(/\bCli\b/g, 'CLI')
+}
+
 // Site settings - directly from appStore (already initialized from injected config)
-const siteName = computed(() => appStore.cachedPublicSettings?.site_name || appStore.siteName || 'Sub2API')
+const siteName = computed(() =>
+  normalizeEntroxBranding(appStore.cachedPublicSettings?.site_name || appStore.siteName, defaultSiteName)
+)
 const siteLogo = computed(() => appStore.cachedPublicSettings?.site_logo || appStore.siteLogo || '')
-const siteSubtitle = computed(() => appStore.cachedPublicSettings?.site_subtitle || 'AI API Gateway Platform')
+const siteSubtitle = computed(() =>
+  normalizeEntroxBranding(appStore.cachedPublicSettings?.site_subtitle, defaultSiteSubtitle)
+)
 const docUrl = computed(() => appStore.cachedPublicSettings?.doc_url || appStore.docUrl || '')
 const homeContent = computed(() => appStore.cachedPublicSettings?.home_content || '')
 

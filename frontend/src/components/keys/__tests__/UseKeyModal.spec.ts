@@ -95,7 +95,7 @@ describe('UseKeyModal', () => {
         show: true,
         apiKey: 'sk-test',
         baseUrl: 'https://example.com/v1',
-        platform: 'openai'
+        platform: 'entrox'
       },
       global: {
         stubs: {
@@ -122,5 +122,30 @@ describe('UseKeyModal', () => {
     expect(wrapper.text()).toContain('Terminal')
     expect(codeBlock.text()).toBe('entrox login')
     expect(codeBlock.text()).not.toContain('opencode.json')
+  })
+
+  it('does not show Entrox CLI tab for non-Entrox platforms', () => {
+    const wrapper = mount(UseKeyModal, {
+      props: {
+        show: true,
+        apiKey: 'sk-test',
+        baseUrl: 'https://example.com/v1',
+        platform: 'openai'
+      },
+      global: {
+        stubs: {
+          BaseDialog: {
+            template: '<div><slot /><slot name="footer" /></div>'
+          },
+          Icon: {
+            template: '<span />'
+          }
+        }
+      }
+    })
+
+    const tabLabels = wrapper.findAll('button').map((button) => button.text())
+
+    expect(tabLabels.some((label) => label.includes('keys.useKeyModal.cliTabs.opencode'))).toBe(false)
   })
 })

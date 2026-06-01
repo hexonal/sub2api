@@ -313,6 +313,7 @@
             <div class="flex items-center gap-1">
               <!-- Use Key Button -->
               <button
+                v-if="isEntroxKey(row)"
                 @click="openUseKeyModal(row)"
                 class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-green-50 hover:text-green-600 dark:hover:bg-green-900/20 dark:hover:text-green-400"
               >
@@ -1359,7 +1360,10 @@ const loadPublicSettings = async () => {
   }
 }
 
+const isEntroxKey = (key: ApiKey) => key.group?.platform === 'entrox'
+
 const openUseKeyModal = (key: ApiKey) => {
+  if (!isEntroxKey(key)) return
   selectedKey.value = key
   showUseKeyModal.value = true
 }

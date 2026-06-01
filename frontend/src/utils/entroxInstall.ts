@@ -1,4 +1,4 @@
-export type EntroxInstallMethodId = 'homebrew' | 'scoop'
+export type EntroxInstallMethodId = 'script' | 'powershell' | 'homebrew' | 'scoop'
 
 export interface EntroxInstallMethod {
   id: EntroxInstallMethodId
@@ -25,6 +25,28 @@ ENTROX_HOMEBREW_TAP="$(brew --repository)/Library/Taps/hexonal/homebrew-entrox";
 ${installCommand}`
 }
 
+export function getEntroxScriptInstallCommand(isCn: boolean): string {
+  const installCommand = 'curl -fsSL https://entrox.996icu.wiki/install | bash'
+
+  if (!isCn) {
+    return installCommand
+  }
+
+  return `# 国内默认走 Entrox 下载入口；服务端可配置 Aliyun OSS/CDN 镜像，无需用户本机配置代理
+${installCommand}`
+}
+
+export function getEntroxPowerShellInstallCommand(isCn: boolean): string {
+  const installCommand = 'irm https://entrox.996icu.wiki/install.ps1 | iex'
+
+  if (!isCn) {
+    return installCommand
+  }
+
+  return `# 国内默认走 Entrox 下载入口；无需预装 Scoop
+${installCommand}`
+}
+
 export function getEntroxScoopInstallCommand(isCn: boolean): string {
   if (!isCn) {
     return '# Install Scoop first if it is not already installed\nSet-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser\nInvoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression\n\nscoop bucket add entrox https://github.com/hexonal/scoop-entrox\nscoop install entrox'
@@ -44,6 +66,16 @@ scoop install entrox`
 export function getEntroxInstallMethods(isCn: boolean): EntroxInstallMethod[] {
   return [
     {
+      id: 'script',
+      labelKey: 'home.install.script',
+      command: getEntroxScriptInstallCommand(isCn)
+    },
+    {
+      id: 'powershell',
+      labelKey: 'home.install.powershell',
+      command: getEntroxPowerShellInstallCommand(isCn)
+    },
+    {
       id: 'homebrew',
       labelKey: 'home.install.homebrew',
       command: getEntroxHomebrewInstallCommand(isCn)
@@ -57,9 +89,15 @@ export function getEntroxInstallMethods(isCn: boolean): EntroxInstallMethod[] {
 }
 
 export function getEntroxInstallGuide(isCn: boolean): string {
-  return `# macOS / Linux (Homebrew)
+  return `# macOS / Linux (official installer)
+${getEntroxScriptInstallCommand(isCn)}
+
+# Windows PowerShell (official installer)
+${getEntroxPowerShellInstallCommand(isCn)}
+
+# macOS fallback (Homebrew)
 ${getEntroxHomebrewInstallCommand(isCn)}
 
-# Windows (Scoop)
+# Windows fallback (Scoop)
 ${getEntroxScoopInstallCommand(isCn)}`
 }

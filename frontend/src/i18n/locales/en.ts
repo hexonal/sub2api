@@ -15,6 +15,8 @@ export default {
     heroDescription: 'No need to manage multiple subscriptions. Access Claude, GPT, Gemini and more with a single API key',
     install: {
       title: 'Install Entrox CLI',
+      script: 'macOS / Linux',
+      powershell: 'Windows',
       homebrew: 'Homebrew',
       scoop: 'Scoop'
     },

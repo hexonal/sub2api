@@ -625,7 +625,7 @@ const siteSubtitle = computed(() =>
 const docUrl = computed(() => appStore.cachedPublicSettings?.doc_url || appStore.docUrl || '')
 const homeContent = computed(() => appStore.cachedPublicSettings?.home_content || '')
 
-const activeInstallMethod = ref<EntroxInstallMethodId>('homebrew')
+const activeInstallMethod = ref<EntroxInstallMethodId>('script')
 const installMethods = computed(() => getEntroxInstallMethods(isCnInstallLocale(locale.value)))
 const activeInstallMethodConfig = computed(
   () => installMethods.value.find((method) => method.id === activeInstallMethod.value) || installMethods.value[0]

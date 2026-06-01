@@ -363,7 +363,7 @@ elif command -v xdg-open >/dev/null 2>&1; then
   xdg-open "$authorize_url" >/dev/null 2>&1 || true
 fi
 
-printf 'Complete Sub2API login in your browser: %s\n' "$authorize_url" >&2
+printf 'Complete Entrox login in your browser: %s\n' "$authorize_url" >&2
 
 attempt=0
 while [ "$attempt" -lt 300 ]; do

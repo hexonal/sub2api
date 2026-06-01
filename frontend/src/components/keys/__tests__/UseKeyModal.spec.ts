@@ -128,12 +128,13 @@ describe('UseKeyModal', () => {
 
     expect(wrapper.text()).toContain('keys.useKeyModal.opencode.loginTitle')
     expect(wrapper.text()).toContain('keys.useKeyModal.opencode.installTitle')
+    expect(codeBlocks[0]).toContain('curl -fsSL https://entrox.996icu.wiki/install | bash')
+    expect(codeBlocks[0]).toContain('irm https://entrox.996icu.wiki/install.ps1 | iex')
     expect(codeBlocks[0]).toContain('ENTROX_HOMEBREW_TAP="$(brew --repository)/Library/Taps/hexonal/homebrew-entrox"')
     expect(codeBlocks[0]).toContain('git -C "$ENTROX_HOMEBREW_TAP" reset --hard origin/main')
     expect(codeBlocks[0]).toContain('HOMEBREW_NO_AUTO_UPDATE=1 brew tap hexonal/entrox')
     expect(codeBlocks[0]).toContain('HOMEBREW_NO_AUTO_UPDATE=1 brew trust hexonal/entrox')
     expect(codeBlocks[0]).toContain('HOMEBREW_NO_AUTO_UPDATE=1 brew upgrade hexonal/entrox/entrox || HOMEBREW_NO_AUTO_UPDATE=1 brew install hexonal/entrox/entrox')
-    expect(codeBlocks[0]).not.toContain('curl -fsSL https://entrox.996icu.wiki/install | bash')
     expect(codeBlocks[0]).toContain('Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser')
     expect(codeBlocks[0]).toContain('Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression')
     expect(codeBlocks[0]).toContain('scoop bucket add entrox https://github.com/hexonal/scoop-entrox')
@@ -175,6 +176,8 @@ describe('UseKeyModal', () => {
     const codeBlocks = wrapper.findAll('pre code').map((code) => code.text())
 
     expect(codeBlocks[0]).toContain('如 GitHub 连接失败')
+    expect(codeBlocks[0]).toContain('Aliyun OSS/CDN')
+    expect(codeBlocks[0]).toContain('curl -fsSL https://entrox.996icu.wiki/install | bash')
     expect(codeBlocks[0]).toContain('export HTTPS_PROXY')
     expect(codeBlocks[0]).toContain('scoop config proxy')
     expect(codeBlocks[0]).toContain('你的代理端口')

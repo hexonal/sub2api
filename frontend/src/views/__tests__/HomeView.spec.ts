@@ -17,6 +17,8 @@ const messages: Record<string, string> = {
   'home.switchToLight': 'Light',
   'home.switchToDark': 'Dark',
   'home.install.title': 'Install Entrox CLI',
+  'home.install.script': 'macOS / Linux',
+  'home.install.powershell': 'Windows',
   'home.install.homebrew': 'Homebrew',
   'home.install.scoop': 'Scoop',
   'home.desktop.badge': 'Desktop Client',
@@ -137,7 +139,7 @@ describe('HomeView', () => {
     expect(terminal.text()).not.toContain('/v1/messages')
   })
 
-  it('shows Homebrew Entrox CLI install commands on the home hero', async () => {
+  it('shows official Entrox CLI installer commands on the home hero', async () => {
     const wrapper = mount(HomeView, {
       global: {
         stubs: {
@@ -151,16 +153,25 @@ describe('HomeView', () => {
     })
 
     expect(wrapper.text()).toContain('Install Entrox CLI')
-    expect(wrapper.text()).not.toContain('curl -fsSL https://entrox.996icu.wiki/install | bash')
+    expect(wrapper.text()).toContain('curl -fsSL https://entrox.996icu.wiki/install | bash')
     expect(wrapper.text()).not.toContain('Script')
+
+    const scriptTab = wrapper.findAll('button').find((button) => button.text() === 'macOS / Linux')
+    expect(scriptTab).toBeDefined()
+
+    const powerShellTab = wrapper.findAll('button').find((button) => button.text() === 'Windows')
+    expect(powerShellTab).toBeDefined()
+    await powerShellTab!.trigger('click')
+    expect(wrapper.text()).toContain('irm https://entrox.996icu.wiki/install.ps1 | iex')
+
+    const homebrewTab = wrapper.findAll('button').find((button) => button.text() === 'Homebrew')
+    expect(homebrewTab).toBeDefined()
+    await homebrewTab!.trigger('click')
     expect(wrapper.text()).toContain('ENTROX_HOMEBREW_TAP="$(brew --repository)/Library/Taps/hexonal/homebrew-entrox"')
     expect(wrapper.text()).toContain('git -C "$ENTROX_HOMEBREW_TAP" reset --hard origin/main')
     expect(wrapper.text()).toContain('HOMEBREW_NO_AUTO_UPDATE=1 brew tap hexonal/entrox')
     expect(wrapper.text()).toContain('HOMEBREW_NO_AUTO_UPDATE=1 brew trust hexonal/entrox')
     expect(wrapper.text()).toContain('HOMEBREW_NO_AUTO_UPDATE=1 brew upgrade hexonal/entrox/entrox || HOMEBREW_NO_AUTO_UPDATE=1 brew install hexonal/entrox/entrox')
-
-    const homebrewTab = wrapper.findAll('button').find((button) => button.text() === 'Homebrew')
-    expect(homebrewTab).toBeDefined()
 
     const scoopTab = wrapper.findAll('button').find((button) => button.text() === 'Scoop')
     expect(scoopTab).toBeDefined()
@@ -171,7 +182,7 @@ describe('HomeView', () => {
     expect(wrapper.text()).toContain('scoop install entrox')
   })
 
-  it('adds optional CN network proxy guidance for Chinese locale', () => {
+  it('adds optional CN network proxy guidance for Chinese locale', async () => {
     localeRef.value = 'zh'
 
     const wrapper = mount(HomeView, {
@@ -186,8 +197,19 @@ describe('HomeView', () => {
       },
     })
 
+    expect(wrapper.text()).toContain('Aliyun OSS/CDN')
+    expect(wrapper.text()).toContain('curl -fsSL https://entrox.996icu.wiki/install | bash')
+
+    const homebrewTab = wrapper.findAll('button').find((button) => button.text() === 'Homebrew')
+    expect(homebrewTab).toBeDefined()
+    await homebrewTab!.trigger('click')
     expect(wrapper.text()).toContain('如 GitHub 连接失败')
     expect(wrapper.text()).toContain('export HTTPS_PROXY')
+
+    const scoopTab = wrapper.findAll('button').find((button) => button.text() === 'Scoop')
+    expect(scoopTab).toBeDefined()
+    await scoopTab!.trigger('click')
+    expect(wrapper.text()).toContain('scoop config proxy')
     expect(wrapper.text()).toContain('你的代理端口')
     expect(wrapper.text()).not.toContain('127.0.0.1:7890')
   })

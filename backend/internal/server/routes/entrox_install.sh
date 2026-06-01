@@ -2,8 +2,10 @@
 set -euo pipefail
 
 APP=entrox
-REPO=hexonal/entrox
+DEFAULT_INSTALL_BASE_URL="https://entrox.996icu.wiki"
 INSTALL_DIR=${ENTROX_INSTALL_DIR:-"$HOME/.entrox/bin"}
+INSTALL_BASE_URL=${ENTROX_INSTALL_BASE_URL:-$DEFAULT_INSTALL_BASE_URL}
+DOWNLOAD_BASE_URL=${ENTROX_DOWNLOAD_BASE_URL:-"${INSTALL_BASE_URL%/}/downloads/entrox-dev"}
 VERSION=${VERSION:-}
 NO_MODIFY_PATH=${NO_MODIFY_PATH:-}
 
@@ -23,12 +25,16 @@ Usage: install [options]
 
 Options:
   -h, --help              Display this help message
-  -v, --version <version> Install a specific version, for example 1.0.180
+  -v, --version <version> Install a specific GitHub release version, for example 1.0.180
       --no-modify-path    Do not update shell profile files
 
+Environment:
+  ENTROX_DOWNLOAD_BASE_URL  Download mirror base URL. Defaults to ${DEFAULT_INSTALL_BASE_URL}/downloads/entrox-dev
+  ENTROX_INSTALL_DIR        Install directory. Defaults to ~/.entrox/bin
+
 Examples:
-  curl -fsSL https://entrox.996icu.wiki/install | bash
-  curl -fsSL https://entrox.996icu.wiki/install | bash -s -- --version 1.0.180
+  curl -fsSL ${DEFAULT_INSTALL_BASE_URL}/install | bash
+  ENTROX_DOWNLOAD_BASE_URL=https://your-oss-cdn.example.com/entrox-dev curl -fsSL ${DEFAULT_INSTALL_BASE_URL}/install | bash
 EOF
 }
 
@@ -64,6 +70,27 @@ require_command() {
   fi
 }
 
+extract_zip() {
+  local archive=$1
+  local output=$2
+
+  if command -v unzip >/dev/null 2>&1; then
+    unzip -q "$archive" -d "$output"
+    return
+  fi
+
+  if command -v python3 >/dev/null 2>&1; then
+    python3 -m zipfile -e "$archive" "$output"
+    return
+  fi
+
+  red "Error: 'unzip' or 'python3' is required to extract Entrox."
+  red "Ubuntu/Debian: sudo apt-get update && sudo apt-get install -y unzip"
+  red "CentOS/RHEL:   sudo yum install -y unzip"
+  red "Alpine:       apk add --no-cache unzip"
+  exit 1
+}
+
 require_command curl
 
 raw_os=$(uname -s)
@@ -87,11 +114,6 @@ case "$arch" in
     ;;
 esac
 
-if [[ "$os" == "windows" && "$arch" != "x64" ]]; then
-  red "Unsupported OS/Arch: $os/$arch"
-  exit 1
-fi
-
 if [[ "$os" == "darwin" && "$arch" == "x64" ]]; then
   rosetta_flag=$(sysctl -n sysctl.proc_translated 2>/dev/null || echo 0)
   if [[ "$rosetta_flag" == "1" ]]; then
@@ -99,89 +121,63 @@ if [[ "$os" == "darwin" && "$arch" == "x64" ]]; then
   fi
 fi
 
-needs_baseline=false
-if [[ "$arch" == "x64" ]]; then
-  if [[ "$os" == "linux" ]]; then
-    if ! grep -qwi avx2 /proc/cpuinfo 2>/dev/null; then
-      needs_baseline=true
-    fi
-  elif [[ "$os" == "darwin" ]]; then
-    avx2=$(sysctl -n hw.optional.avx2_0 2>/dev/null || echo 0)
-    if [[ "$avx2" != "1" ]]; then
-      needs_baseline=true
-    fi
-  elif [[ "$os" == "windows" ]]; then
-    ps='(Add-Type -MemberDefinition "[DllImport(""kernel32.dll"")] public static extern bool IsProcessorFeaturePresent(int ProcessorFeature);" -Name Kernel32 -Namespace Win32 -PassThru)::IsProcessorFeaturePresent(40)'
-    out=""
-    if command -v powershell.exe >/dev/null 2>&1; then
-      out=$(powershell.exe -NoProfile -NonInteractive -Command "$ps" 2>/dev/null || true)
-    elif command -v pwsh >/dev/null 2>&1; then
-      out=$(pwsh -NoProfile -NonInteractive -Command "$ps" 2>/dev/null || true)
-    fi
-    out=$(echo "$out" | tr -d '\r' | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')
-    if [[ "$out" != "true" && "$out" != "1" ]]; then
-      needs_baseline=true
-    fi
-  fi
-fi
-
-is_musl=false
-if [[ "$os" == "linux" ]]; then
-  require_command tar
-  if [[ -f /etc/alpine-release ]]; then
-    is_musl=true
-  elif command -v ldd >/dev/null 2>&1 && ldd --version 2>&1 | grep -qi musl; then
-    is_musl=true
-  fi
-else
-  require_command unzip
-fi
-
-target="$os-$arch"
-if [[ "$needs_baseline" == "true" ]]; then
-  target="$target-baseline"
-fi
-if [[ "$is_musl" == "true" ]]; then
-  target="$target-musl"
-fi
-
-archive_ext=.zip
-if [[ "$os" == "linux" ]]; then
-  archive_ext=.tar.gz
-fi
-filename="$APP-$target$archive_ext"
-
-if [[ -z "$VERSION" ]]; then
-  version=$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest" | sed -n 's/.*"tag_name": *"v\([^"]*\)".*/\1/p' | head -n 1)
-  if [[ -z "$version" ]]; then
-    red "Failed to resolve latest Entrox release version."
+case "$os-$arch" in
+  darwin-arm64) filename="entrox-cli-macos-arm64.zip" ;;
+  linux-x64) filename="entrox-cli-linux-x64.zip" ;;
+  windows-x64) filename="entrox-cli-windows-x64.zip" ;;
+  darwin-x64)
+    red "Intel macOS builds are not available yet. Use Apple Silicon macOS, Linux x64, or Windows x64."
     exit 1
-  fi
+    ;;
+  linux-arm64)
+    red "Linux arm64 builds are not available yet. Use Linux x64."
+    exit 1
+    ;;
+  *)
+    red "Unsupported OS/Arch: $os/$arch"
+    exit 1
+    ;;
+esac
+
+if [[ -n "$VERSION" ]]; then
+  download_base="https://github.com/hexonal/entrox/releases/download/v${VERSION#v}"
+  display_version="v${VERSION#v}"
 else
-  version="$VERSION"
+  download_base="${DOWNLOAD_BASE_URL%/}"
+  display_version="latest dev build"
 fi
 
-url="https://github.com/$REPO/releases/download/v$version/$filename"
+url="$download_base/$filename"
 tmp_dir="${TMPDIR:-/tmp}/${APP}_install_$$"
 trap 'rm -rf "$tmp_dir"' EXIT
 mkdir -p "$tmp_dir" "$INSTALL_DIR"
 
-info "Installing Entrox $version for $target"
+info "Installing Entrox $display_version for $os-$arch"
+info "Downloading $filename"
 curl -fL --progress-bar -o "$tmp_dir/$filename" "$url"
 
-if [[ "$os" == "linux" ]]; then
-  tar -xzf "$tmp_dir/$filename" -C "$tmp_dir"
-else
-  unzip -q "$tmp_dir/$filename" -d "$tmp_dir"
-fi
+extract_zip "$tmp_dir/$filename" "$tmp_dir"
 
-if [[ ! -f "$tmp_dir/$APP" ]]; then
-  red "Downloaded archive did not contain '$APP'."
+binary=""
+for candidate in "$tmp_dir/bin/$APP" "$tmp_dir/$APP" "$tmp_dir/bin/$APP.exe" "$tmp_dir/$APP.exe"; do
+  if [[ -f "$candidate" ]]; then
+    binary="$candidate"
+    break
+  fi
+done
+
+if [[ -z "$binary" ]]; then
+  red "Downloaded archive did not contain the Entrox binary."
   exit 1
 fi
 
-mv "$tmp_dir/$APP" "$INSTALL_DIR/$APP"
-chmod 755 "$INSTALL_DIR/$APP"
+install_name="$APP"
+if [[ "$os" == "windows" ]]; then
+  install_name="$APP.exe"
+fi
+
+mv -f "$binary" "$INSTALL_DIR/$install_name"
+chmod 755 "$INSTALL_DIR/$install_name"
 
 add_to_path() {
   local file=$1
@@ -211,5 +207,5 @@ if [[ -z "$NO_MODIFY_PATH" ]]; then
 fi
 
 info ""
-info "Entrox installed to $INSTALL_DIR/$APP"
+info "Entrox installed to $INSTALL_DIR/$install_name"
 info "Run: entrox login"

@@ -159,17 +159,19 @@ func TestRegisterCommonRoutesEntroxDevDownloadRedirectUsesDatabaseMirror(t *test
 	router := gin.New()
 	RegisterCommonRoutes(router, testEntroxDownloadMirrorResolver{value: "https://download.example.test/entrox-dev/"})
 
-	req := httptest.NewRequest(http.MethodGet, "/downloads/entrox-dev/entrox-cli-windows-x64.zip", nil)
-	rec := httptest.NewRecorder()
+	for _, asset := range []string{"latest.json", "entrox-cli-windows-x64.zip"} {
+		req := httptest.NewRequest(http.MethodGet, "/downloads/entrox-dev/"+asset, nil)
+		rec := httptest.NewRecorder()
 
-	router.ServeHTTP(rec, req)
+		router.ServeHTTP(rec, req)
 
-	if rec.Code != http.StatusTemporaryRedirect {
-		t.Fatalf("expected redirect status, got %d: %s", rec.Code, rec.Body.String())
-	}
-	expected := "https://download.example.test/entrox-dev/entrox-cli-windows-x64.zip"
-	if rec.Header().Get("Location") != expected {
-		t.Fatalf("expected redirect to %q, got %q", expected, rec.Header().Get("Location"))
+		if rec.Code != http.StatusTemporaryRedirect {
+			t.Fatalf("expected redirect status for %s, got %d: %s", asset, rec.Code, rec.Body.String())
+		}
+		expected := "https://download.example.test/entrox-dev/" + asset
+		if rec.Header().Get("Location") != expected {
+			t.Fatalf("expected redirect to %q, got %q", expected, rec.Header().Get("Location"))
+		}
 	}
 }
 
@@ -228,6 +230,8 @@ func TestRegisterCommonRoutesEntroxDevDownloadRejectsUnknownAsset(t *testing.T) 
 
 func TestIsEntroxDevReleaseAsset(t *testing.T) {
 	for _, asset := range []string{
+		"latest.json",
+		"SHA256SUMS",
 		"entrox-cli-macos-arm64.zip",
 		"entrox-cli-linux-x64.zip",
 		"entrox-cli-windows-x64.zip",

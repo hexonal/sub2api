@@ -175,7 +175,11 @@ func normalizeEntroxDownloadMirrorBaseURL(raw string) (string, error) {
 
 func isEntroxDevReleaseAsset(asset string) bool {
 	switch asset {
-	case "entrox-cli-macos-arm64.zip", "entrox-cli-linux-x64.zip", "entrox-cli-windows-x64.zip":
+	case "latest.json",
+		"SHA256SUMS",
+		"entrox-cli-macos-arm64.zip",
+		"entrox-cli-linux-x64.zip",
+		"entrox-cli-windows-x64.zip":
 		return true
 	default:
 		return false

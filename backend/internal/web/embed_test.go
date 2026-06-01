@@ -143,6 +143,8 @@ func TestReplaceNoncePlaceholder(t *testing.T) {
 
 func TestShouldBypassEmbeddedFrontendForInstallScript(t *testing.T) {
 	assert.True(t, shouldBypassEmbeddedFrontend("/install"))
+	assert.True(t, shouldBypassEmbeddedFrontend("/install.ps1"))
+	assert.True(t, shouldBypassEmbeddedFrontend("/downloads/entrox-dev/entrox-cli-linux-x64.zip"))
 }
 
 func TestNonceHTMLPlaceholder(t *testing.T) {

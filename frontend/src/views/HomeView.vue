@@ -433,19 +433,12 @@ import { useI18n } from 'vue-i18n'
 import { useAuthStore, useAppStore } from '@/stores'
 import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
 import Icon from '@/components/icons/Icon.vue'
+import { getEntroxInstallMethods, isCnInstallLocale, type EntroxInstallMethodId } from '@/utils/entroxInstall'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 const authStore = useAuthStore()
 const appStore = useAppStore()
-
-type InstallMethodId = 'script' | 'homebrew' | 'scoop'
-
-interface InstallMethod {
-  id: InstallMethodId
-  labelKey: string
-  command: string
-}
 
 const defaultSiteName = 'Entrox Studio'
 const defaultSiteSubtitle =
@@ -478,26 +471,10 @@ const siteSubtitle = computed(() =>
 const docUrl = computed(() => appStore.cachedPublicSettings?.doc_url || appStore.docUrl || '')
 const homeContent = computed(() => appStore.cachedPublicSettings?.home_content || '')
 
-const activeInstallMethod = ref<InstallMethodId>('script')
-const installMethods: InstallMethod[] = [
-  {
-    id: 'script',
-    labelKey: 'home.install.script',
-    command: 'curl -fsSL https://entrox.996icu.wiki/install | bash'
-  },
-  {
-    id: 'homebrew',
-    labelKey: 'home.install.homebrew',
-    command: 'brew tap hexonal/entrox\nbrew install entrox'
-  },
-  {
-    id: 'scoop',
-    labelKey: 'home.install.scoop',
-    command: 'scoop bucket add entrox https://github.com/hexonal/scoop-entrox\nscoop install entrox'
-  }
-]
+const activeInstallMethod = ref<EntroxInstallMethodId>('homebrew')
+const installMethods = computed(() => getEntroxInstallMethods(isCnInstallLocale(locale.value)))
 const activeInstallMethodConfig = computed(
-  () => installMethods.find((method) => method.id === activeInstallMethod.value) || installMethods[0]
+  () => installMethods.value.find((method) => method.id === activeInstallMethod.value) || installMethods.value[0]
 )
 
 // Check if homeContent is a URL (for iframe display)

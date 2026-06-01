@@ -140,6 +140,7 @@ import BaseDialog from '@/components/common/BaseDialog.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { useClipboard } from '@/composables/useClipboard'
 import type { GroupPlatform } from '@/types'
+import { getEntroxInstallGuide, isCnInstallLocale } from '@/utils/entroxInstall'
 
 interface Props {
   show: boolean
@@ -169,7 +170,7 @@ interface FileConfig {
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const { copyToClipboard: clipboardCopy } = useClipboard()
 
 const copiedIndex = ref<number | null>(null)
@@ -586,16 +587,7 @@ function generateEntroxCliFiles(): FileConfig[] {
   return [
     {
       path: t('keys.useKeyModal.opencode.installTitle'),
-      content: `# macOS / Linux
-curl -fsSL https://entrox.996icu.wiki/install | bash
-
-# macOS (Homebrew)
-brew tap hexonal/entrox
-brew install entrox
-
-# Windows (Scoop)
-scoop bucket add entrox https://github.com/hexonal/scoop-entrox
-scoop install entrox`,
+      content: getEntroxInstallGuide(isCnInstallLocale(locale.value)),
       hint: t('keys.useKeyModal.opencode.installHint')
     },
     {

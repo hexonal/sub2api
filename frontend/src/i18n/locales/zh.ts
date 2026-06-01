@@ -15,7 +15,6 @@ export default {
     heroDescription: '无需管理多个订阅账号，一站式接入 Claude、GPT、Gemini 等主流 AI 服务',
     install: {
       title: '快速安装 Entrox CLI',
-      script: '脚本',
       homebrew: 'Homebrew',
       scoop: 'Scoop'
     },

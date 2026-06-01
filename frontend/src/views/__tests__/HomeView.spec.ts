@@ -7,6 +7,7 @@ const { checkAuth, fetchPublicSettings } = vi.hoisted(() => ({
   checkAuth: vi.fn(),
   fetchPublicSettings: vi.fn(),
 }))
+const localeRef = vi.hoisted(() => ({ value: 'en' }))
 
 const messages: Record<string, string> = {
   'home.getStarted': 'Get Started',
@@ -16,7 +17,6 @@ const messages: Record<string, string> = {
   'home.switchToLight': 'Light',
   'home.switchToDark': 'Dark',
   'home.install.title': 'Install Entrox CLI',
-  'home.install.script': 'Script',
   'home.install.homebrew': 'Homebrew',
   'home.install.scoop': 'Scoop',
   'home.tags.subscriptionToApi': 'Subscription to API',
@@ -45,6 +45,7 @@ vi.mock('vue-i18n', async () => {
     ...actual,
     useI18n: () => ({
       t: (key: string) => messages[key] ?? key,
+      locale: localeRef,
     }),
   }
 })
@@ -72,6 +73,7 @@ describe('HomeView', () => {
   beforeEach(() => {
     checkAuth.mockReset()
     fetchPublicSettings.mockReset()
+    localeRef.value = 'en'
     localStorage.clear()
 
     Object.defineProperty(window, 'matchMedia', {
@@ -118,7 +120,10 @@ describe('HomeView', () => {
     })
 
     expect(wrapper.text()).toContain('Install Entrox CLI')
-    expect(wrapper.text()).toContain('curl -fsSL https://entrox.996icu.wiki/install | bash')
+    expect(wrapper.text()).not.toContain('curl -fsSL https://entrox.996icu.wiki/install | bash')
+    expect(wrapper.text()).not.toContain('Script')
+    expect(wrapper.text()).toContain('brew tap hexonal/entrox')
+    expect(wrapper.text()).toContain('brew install entrox')
 
     const homebrewTab = wrapper.findAll('button').find((button) => button.text() === 'Homebrew')
     expect(homebrewTab).toBeDefined()
@@ -131,5 +136,26 @@ describe('HomeView', () => {
     await scoopTab!.trigger('click')
     expect(wrapper.text()).toContain('scoop bucket add entrox https://github.com/hexonal/scoop-entrox')
     expect(wrapper.text()).toContain('scoop install entrox')
+  })
+
+  it('adds optional CN network proxy guidance for Chinese locale', () => {
+    localeRef.value = 'zh'
+
+    const wrapper = mount(HomeView, {
+      global: {
+        stubs: {
+          LocaleSwitcher: true,
+          Icon: true,
+          RouterLink: {
+            template: '<a><slot /></a>',
+          },
+        },
+      },
+    })
+
+    expect(wrapper.text()).toContain('如 GitHub 连接失败')
+    expect(wrapper.text()).toContain('export HTTPS_PROXY')
+    expect(wrapper.text()).toContain('你的代理端口')
+    expect(wrapper.text()).not.toContain('127.0.0.1:7890')
   })
 })

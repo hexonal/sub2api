@@ -768,7 +768,11 @@ export default {
       },
       opencode: {
         title: 'Entrox CLI Login',
+        description: 'Install Entrox CLI first, then run the login command. Browser authorization will complete CLI login automatically.',
         subtitle: 'Terminal',
+        installTitle: 'Install Entrox CLI',
+        loginTitle: 'Terminal',
+        installHint: 'If Entrox CLI is already installed, skip installation and run the login command directly.',
         hint: 'Run the command in terminal. Browser authorization will complete entrox CLI login automatically.',
       },
     },

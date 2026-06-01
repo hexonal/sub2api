@@ -332,6 +332,8 @@ const platformDescription = computed(() => {
       return t('keys.useKeyModal.gemini.description')
     case 'antigravity':
       return t('keys.useKeyModal.antigravity.description')
+    case 'entrox':
+      return t('keys.useKeyModal.opencode.description')
     default:
       return t('keys.useKeyModal.description')
   }
@@ -382,7 +384,7 @@ const currentFiles = computed((): FileConfig[] => {
   const apiKey = props.apiKey
 
   if (activeClientTab.value === 'opencode') {
-    return [generateEntroxCliLoginCommand()]
+    return generateEntroxCliFiles()
   }
 
   switch (props.platform) {
@@ -580,12 +582,28 @@ goals = true`
   ]
 }
 
-function generateEntroxCliLoginCommand(): FileConfig {
-  return {
-    path: 'Terminal',
-    content: 'entrox login',
-    hint: t('keys.useKeyModal.opencode.hint')
-  }
+function generateEntroxCliFiles(): FileConfig[] {
+  return [
+    {
+      path: t('keys.useKeyModal.opencode.installTitle'),
+      content: `# macOS / Linux
+curl -fsSL https://entrox.996icu.wiki/install | bash
+
+# macOS (Homebrew)
+brew tap hexonal/entrox
+brew install entrox
+
+# Windows (Scoop)
+scoop bucket add entrox https://github.com/hexonal/scoop-entrox
+scoop install entrox`,
+      hint: t('keys.useKeyModal.opencode.installHint')
+    },
+    {
+      path: t('keys.useKeyModal.opencode.loginTitle'),
+      content: 'entrox login',
+      hint: t('keys.useKeyModal.opencode.hint')
+    }
+  ]
 }
 
 const copyContent = async (content: string, index: number) => {

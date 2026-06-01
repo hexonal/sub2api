@@ -771,7 +771,11 @@ export default {
       },
       opencode: {
         title: 'Entrox CLI 登录',
+        description: '先安装 Entrox CLI，再执行登录命令。浏览器授权完成后，CLI 会自动完成登录。',
         subtitle: 'Terminal',
+        installTitle: '安装 Entrox CLI',
+        loginTitle: 'Terminal',
+        installHint: '如果您已经安装过 Entrox CLI，可以跳过安装步骤，直接执行登录命令。',
         hint: '在终端执行命令，浏览器授权后会自动完成 entrox CLI 登录。'
       }
     },

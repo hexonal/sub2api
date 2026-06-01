@@ -89,7 +89,7 @@ describe('UseKeyModal', () => {
     expect(configToml).toContain('[features]\nresponses_websockets_v2 = true\ngoals = true')
   })
 
-  it('renders Entrox CLI login as a terminal command', async () => {
+  it('renders Entrox CLI install methods and login command', async () => {
     const wrapper = mount(UseKeyModal, {
       props: {
         show: true,
@@ -117,11 +117,17 @@ describe('UseKeyModal', () => {
     await opencodeTab!.trigger('click')
     await nextTick()
 
-    const codeBlock = wrapper.find('pre code')
-    expect(codeBlock.exists()).toBe(true)
-    expect(wrapper.text()).toContain('Terminal')
-    expect(codeBlock.text()).toBe('entrox login')
-    expect(codeBlock.text()).not.toContain('opencode.json')
+    const codeBlocks = wrapper.findAll('pre code').map((code) => code.text())
+
+    expect(wrapper.text()).toContain('keys.useKeyModal.opencode.loginTitle')
+    expect(wrapper.text()).toContain('keys.useKeyModal.opencode.installTitle')
+    expect(codeBlocks[0]).toContain('curl -fsSL https://entrox.996icu.wiki/install | bash')
+    expect(codeBlocks[0]).toContain('brew tap hexonal/entrox')
+    expect(codeBlocks[0]).toContain('brew install entrox')
+    expect(codeBlocks[0]).toContain('scoop bucket add entrox https://github.com/hexonal/scoop-entrox')
+    expect(codeBlocks[0]).toContain('scoop install entrox')
+    expect(codeBlocks[1]).toBe('entrox login')
+    expect(codeBlocks.join('\n')).not.toContain('opencode.json')
   })
 
   it('does not show Entrox CLI tab for non-Entrox platforms', () => {

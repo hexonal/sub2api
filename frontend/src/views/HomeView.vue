@@ -155,16 +155,15 @@
                 <div class="terminal-body">
                   <div class="code-line line-1">
                     <span class="code-prompt">$</span>
-                    <span class="code-cmd">curl</span>
-                    <span class="code-flag">-X POST</span>
-                    <span class="code-url">/v1/messages</span>
+                    <span class="code-cmd">entrox</span>
+                    <span class="code-flag">login</span>
                   </div>
                   <div class="code-line line-2">
-                    <span class="code-comment"># Routing to upstream...</span>
+                    <span class="code-comment"># Opening browser authorization...</span>
                   </div>
                   <div class="code-line line-3">
-                    <span class="code-success">200 OK</span>
-                    <span class="code-response">{ "content": "Hello!" }</span>
+                    <span class="code-success">SIGNED IN</span>
+                    <span class="code-response">Entrox CLI ready</span>
                   </div>
                   <div class="code-line line-4">
                     <span class="code-prompt">$</span>

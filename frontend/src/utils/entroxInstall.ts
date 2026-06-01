@@ -11,17 +11,28 @@ export function isCnInstallLocale(locale: unknown): boolean {
 }
 
 export function getEntroxHomebrewInstallCommand(isCn: boolean): string {
+  const repairTapCommand = `ENTROX_HOMEBREW_TAP="$(brew --repository)/Library/Taps/hexonal/homebrew-entrox"
+if [ -d "$ENTROX_HOMEBREW_TAP/.git" ]; then
+  git -C "$ENTROX_HOMEBREW_TAP" fetch origin
+  git -C "$ENTROX_HOMEBREW_TAP" reset --hard origin/main
+  git -C "$ENTROX_HOMEBREW_TAP" clean -fd
+elif [ -d "$ENTROX_HOMEBREW_TAP" ]; then
+  rm -rf "$ENTROX_HOMEBREW_TAP"
+fi`
+  const installCommand = `${repairTapCommand}
+HOMEBREW_NO_AUTO_UPDATE=1 brew tap hexonal/entrox
+(HOMEBREW_NO_AUTO_UPDATE=1 brew trust hexonal/entrox || true)
+HOMEBREW_NO_AUTO_UPDATE=1 brew install hexonal/entrox/entrox`
+
   if (!isCn) {
-    return 'HOMEBREW_NO_AUTO_UPDATE=1 brew tap hexonal/entrox\n(HOMEBREW_NO_AUTO_UPDATE=1 brew trust hexonal/entrox || true)\nHOMEBREW_NO_AUTO_UPDATE=1 brew install hexonal/entrox/entrox'
+    return installCommand
   }
 
   return `# 中国大陆网络：如 GitHub 连接失败，先按你的本机代理地址修改并执行下面两行
 # export HTTPS_PROXY="http://127.0.0.1:<你的代理端口>"
 # export HTTP_PROXY="$HTTPS_PROXY"
 
-HOMEBREW_NO_AUTO_UPDATE=1 brew tap hexonal/entrox
-(HOMEBREW_NO_AUTO_UPDATE=1 brew trust hexonal/entrox || true)
-HOMEBREW_NO_AUTO_UPDATE=1 brew install hexonal/entrox/entrox`
+${installCommand}`
 }
 
 export function getEntroxScoopInstallCommand(isCn: boolean): string {

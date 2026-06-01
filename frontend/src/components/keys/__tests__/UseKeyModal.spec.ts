@@ -128,6 +128,8 @@ describe('UseKeyModal', () => {
 
     expect(wrapper.text()).toContain('keys.useKeyModal.opencode.loginTitle')
     expect(wrapper.text()).toContain('keys.useKeyModal.opencode.installTitle')
+    expect(codeBlocks[0]).toContain('ENTROX_HOMEBREW_TAP="$(brew --repository)/Library/Taps/hexonal/homebrew-entrox"')
+    expect(codeBlocks[0]).toContain('git -C "$ENTROX_HOMEBREW_TAP" reset --hard origin/main')
     expect(codeBlocks[0]).toContain('HOMEBREW_NO_AUTO_UPDATE=1 brew tap hexonal/entrox')
     expect(codeBlocks[0]).toContain('HOMEBREW_NO_AUTO_UPDATE=1 brew trust hexonal/entrox')
     expect(codeBlocks[0]).toContain('HOMEBREW_NO_AUTO_UPDATE=1 brew install hexonal/entrox/entrox')

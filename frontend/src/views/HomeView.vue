@@ -136,6 +136,45 @@
                 <Icon name="arrowRight" size="md" class="ml-2" :stroke-width="2" />
               </router-link>
             </div>
+
+            <!-- Install Commands -->
+            <div
+              class="mx-auto mt-7 w-full max-w-xl rounded-2xl border border-white/70 bg-white/75 p-4 text-left shadow-sm backdrop-blur-sm dark:border-dark-700/70 dark:bg-dark-800/75 lg:mx-0"
+            >
+              <div class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div class="flex items-center gap-2">
+                  <Icon name="terminal" size="sm" class="text-primary-500" />
+                  <span class="text-sm font-semibold text-gray-900 dark:text-white">
+                    {{ t('home.install.title') }}
+                  </span>
+                </div>
+                <div
+                  class="inline-flex w-full rounded-lg bg-gray-100 p-1 dark:bg-dark-900 sm:w-auto"
+                  role="tablist"
+                  :aria-label="t('home.install.title')"
+                >
+                  <button
+                    v-for="method in installMethods"
+                    :key="method.id"
+                    type="button"
+                    role="tab"
+                    :aria-selected="activeInstallMethod === method.id"
+                    @click="activeInstallMethod = method.id"
+                    :class="[
+                      'flex-1 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium transition-colors sm:flex-none',
+                      activeInstallMethod === method.id
+                        ? 'bg-white text-primary-600 shadow-sm dark:bg-dark-700 dark:text-primary-300'
+                        : 'text-gray-500 hover:text-gray-700 dark:text-dark-300 dark:hover:text-white'
+                    ]"
+                  >
+                    {{ t(method.labelKey) }}
+                  </button>
+                </div>
+              </div>
+              <pre
+                class="min-h-[52px] overflow-x-auto rounded-xl bg-gray-950 px-4 py-3 text-sm leading-6 text-gray-100 shadow-inner"
+              ><code>{{ activeInstallMethodConfig.command }}</code></pre>
+            </div>
           </div>
 
           <!-- Right: Terminal Animation -->
@@ -400,6 +439,14 @@ const { t } = useI18n()
 const authStore = useAuthStore()
 const appStore = useAppStore()
 
+type InstallMethodId = 'script' | 'homebrew' | 'scoop'
+
+interface InstallMethod {
+  id: InstallMethodId
+  labelKey: string
+  command: string
+}
+
 const defaultSiteName = 'Entrox Studio'
 const defaultSiteSubtitle =
   '连接顶级模型与 Entrox Desktop / CLI，把模型接入、项目会话、Agent 工作流和长程编码任务统一到一个可控的桌面体验'
@@ -430,6 +477,28 @@ const siteSubtitle = computed(() =>
 )
 const docUrl = computed(() => appStore.cachedPublicSettings?.doc_url || appStore.docUrl || '')
 const homeContent = computed(() => appStore.cachedPublicSettings?.home_content || '')
+
+const activeInstallMethod = ref<InstallMethodId>('script')
+const installMethods: InstallMethod[] = [
+  {
+    id: 'script',
+    labelKey: 'home.install.script',
+    command: 'curl -fsSL https://entrox.996icu.wiki/install | bash'
+  },
+  {
+    id: 'homebrew',
+    labelKey: 'home.install.homebrew',
+    command: 'brew tap hexonal/entrox\nbrew install entrox'
+  },
+  {
+    id: 'scoop',
+    labelKey: 'home.install.scoop',
+    command: 'scoop bucket add entrox https://github.com/hexonal/scoop-entrox\nscoop install entrox'
+  }
+]
+const activeInstallMethodConfig = computed(
+  () => installMethods.find((method) => method.id === activeInstallMethod.value) || installMethods[0]
+)
 
 // Check if homeContent is a URL (for iframe display)
 const isHomeContentUrl = computed(() => {

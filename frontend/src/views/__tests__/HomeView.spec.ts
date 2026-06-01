@@ -15,6 +15,10 @@ const messages: Record<string, string> = {
   'home.viewDocs': 'Docs',
   'home.switchToLight': 'Light',
   'home.switchToDark': 'Dark',
+  'home.install.title': 'Install Entrox CLI',
+  'home.install.script': 'Script',
+  'home.install.homebrew': 'Homebrew',
+  'home.install.scoop': 'Scoop',
   'home.tags.subscriptionToApi': 'Subscription to API',
   'home.tags.stickySession': 'Sticky session',
   'home.tags.realtimeBilling': 'Realtime billing',
@@ -98,5 +102,34 @@ describe('HomeView', () => {
     expect(terminal.text()).toContain('Entrox CLI ready')
     expect(terminal.text()).not.toContain('curl')
     expect(terminal.text()).not.toContain('/v1/messages')
+  })
+
+  it('shows Entrox CLI install commands on the home hero', async () => {
+    const wrapper = mount(HomeView, {
+      global: {
+        stubs: {
+          LocaleSwitcher: true,
+          Icon: true,
+          RouterLink: {
+            template: '<a><slot /></a>',
+          },
+        },
+      },
+    })
+
+    expect(wrapper.text()).toContain('Install Entrox CLI')
+    expect(wrapper.text()).toContain('curl -fsSL https://entrox.996icu.wiki/install | bash')
+
+    const homebrewTab = wrapper.findAll('button').find((button) => button.text() === 'Homebrew')
+    expect(homebrewTab).toBeDefined()
+    await homebrewTab!.trigger('click')
+    expect(wrapper.text()).toContain('brew tap hexonal/entrox')
+    expect(wrapper.text()).toContain('brew install entrox')
+
+    const scoopTab = wrapper.findAll('button').find((button) => button.text() === 'Scoop')
+    expect(scoopTab).toBeDefined()
+    await scoopTab!.trigger('click')
+    expect(wrapper.text()).toContain('scoop bucket add entrox https://github.com/hexonal/scoop-entrox')
+    expect(wrapper.text()).toContain('scoop install entrox')
   })
 })

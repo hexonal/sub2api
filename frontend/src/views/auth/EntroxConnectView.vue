@@ -57,6 +57,9 @@
               <span class="mt-1 block text-xs text-gray-500 dark:text-dark-400">
                 {{ keyMeta(key) }}
               </span>
+              <span v-if="groupName(key.group_id)" class="mt-1 block text-xs text-gray-500 dark:text-dark-400">
+                分组：{{ groupName(key.group_id) }}
+              </span>
             </span>
           </label>
         </div>
@@ -80,8 +83,23 @@
               创建新的 API Key
             </span>
             <span class="mt-1 block text-xs text-gray-500 dark:text-dark-400">
-              将为本次 entrox CLI 登录生成一个新的 SK。
+              将为本次 entrox CLI 登录生成一个新的分组 SK。
             </span>
+            <select
+              v-if="availableGroups.length > 0"
+              v-model.number="selectedGroupID"
+              class="mt-3 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 dark:border-dark-700 dark:bg-dark-900 dark:text-white"
+              :disabled="status === 'approving'"
+              @click.stop
+            >
+              <option
+                v-for="group in availableGroups"
+                :key="group.id"
+                :value="group.id"
+              >
+                {{ group.name }} / {{ group.platform }}
+              </option>
+            </select>
           </span>
         </label>
       </div>
@@ -115,9 +133,9 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { AuthLayout } from '@/components/layout'
 import Icon from '@/components/icons/Icon.vue'
-import { apiClient, keysAPI } from '@/api'
+import { apiClient, keysAPI, userGroupsAPI } from '@/api'
 import { useAppStore } from '@/stores'
-import type { ApiKey } from '@/types'
+import type { ApiKey, Group } from '@/types'
 import { formatDateTime } from '@/utils/format'
 
 type Status = 'loading' | 'ready' | 'approving' | 'success' | 'error'
@@ -128,8 +146,10 @@ const appStore = useAppStore()
 const status = ref<Status>('loading')
 const message = ref('正在加载可用的 API Key...')
 const apiKeys = ref<ApiKey[]>([])
+const availableGroups = ref<Group[]>([])
 const selectedMode = ref<SelectionMode>('create')
 const selectedAPIKeyID = ref<number | null>(null)
+const selectedGroupID = ref<number | null>(null)
 
 const title = computed(() => {
   if (status.value === 'success') return 'entrox 已连接'
@@ -147,7 +167,7 @@ const statusClass = computed(() => {
 const sessionID = computed(() => (typeof route.query.session_id === 'string' ? route.query.session_id : ''))
 
 const canApprove = computed(() => {
-  if (selectedMode.value === 'create') return true
+  if (selectedMode.value === 'create') return selectedGroupID.value !== null
   return selectedAPIKeyID.value !== null
 })
 
@@ -162,20 +182,30 @@ async function loadAPIKeys(): Promise<void> {
   message.value = '正在加载可用的 API Key...'
 
   try {
-    const result = await keysAPI.list(1, 100, {
-      status: 'active',
-      sort_by: 'created_at',
-      sort_order: 'desc',
-    })
-    apiKeys.value = result.items
+    const [result, groups] = await Promise.all([
+      keysAPI.list(1, 100, {
+        status: 'active',
+        sort_by: 'created_at',
+        sort_order: 'desc',
+      }),
+      userGroupsAPI.getAvailable(),
+    ])
+    availableGroups.value = groups.filter((group) => group.status === 'active')
+    const availableGroupIDs = new Set(availableGroups.value.map((group) => group.id))
+    selectedGroupID.value = availableGroups.value[0]?.id ?? null
+    apiKeys.value = result.items.filter((key) => key.group_id !== null && availableGroupIDs.has(key.group_id))
     if (apiKeys.value.length > 0) {
       selectedMode.value = 'existing'
       selectedAPIKeyID.value = apiKeys.value[0].id
-      message.value = '选择一个已有 SK，或创建新的 API Key。'
+      message.value = '选择一个已绑定分组的 SK，或创建新的分组 API Key。'
+    } else if (availableGroups.value.length > 0) {
+      selectedMode.value = 'create'
+      selectedAPIKeyID.value = null
+      message.value = '当前账号没有已绑定分组的 SK，可以选择分组创建新的 API Key。'
     } else {
       selectedMode.value = 'create'
       selectedAPIKeyID.value = null
-      message.value = '当前账号没有可用 SK，可以创建新的 API Key。'
+      message.value = '当前账号没有可绑定分组，请先购买订阅或联系管理员分配分组。'
     }
     status.value = 'ready'
   } catch (error) {
@@ -194,7 +224,7 @@ async function approve(): Promise<void> {
   }
   if (!canApprove.value) {
     status.value = 'error'
-    message.value = '请选择一个 API Key。'
+    message.value = selectedMode.value === 'create' ? '请选择可绑定分组。' : '请选择一个已绑定分组的 API Key。'
     return
   }
 
@@ -202,7 +232,7 @@ async function approve(): Promise<void> {
   message.value = '正在授权 entrox CLI...'
 
   try {
-    await apiClient.post('/auth/entrox/approve', buildApprovePayload())
+    await apiClient.post('/auth/entrox/approve', await buildApprovePayload())
     status.value = 'success'
     message.value = '可以回到终端继续使用 entrox。'
     appStore.showSuccess('entrox CLI 已连接')
@@ -217,16 +247,20 @@ async function approve(): Promise<void> {
   }
 }
 
-function buildApprovePayload(): { session_id: string; api_key_id?: number; create_new?: boolean } {
+async function buildApprovePayload(): Promise<{ session_id: string; api_key_id: number }> {
   if (selectedMode.value === 'existing' && selectedAPIKeyID.value !== null) {
     return {
       session_id: sessionID.value,
       api_key_id: selectedAPIKeyID.value,
     }
   }
+  if (selectedGroupID.value === null) {
+    throw new Error('请选择可绑定分组。')
+  }
+  const key = await keysAPI.create(`entrox CLI ${new Date().toLocaleString()}`, selectedGroupID.value)
   return {
     session_id: sessionID.value,
-    create_new: true,
+    api_key_id: key.id,
   }
 }
 
@@ -238,6 +272,7 @@ function selectExistingAPIKey(id: number): void {
 function selectCreateNew(): void {
   selectedMode.value = 'create'
   selectedAPIKeyID.value = null
+  selectedGroupID.value = selectedGroupID.value ?? availableGroups.value[0]?.id ?? null
 }
 
 function maskAPIKey(key: string): string {
@@ -248,6 +283,11 @@ function maskAPIKey(key: string): string {
 function keyMeta(key: ApiKey): string {
   if (key.last_used_at) return `上次使用 ${formatDateTime(key.last_used_at)}`
   return `创建于 ${formatDateTime(key.created_at)}`
+}
+
+function groupName(groupID: number | null): string {
+  if (groupID === null) return ''
+  return availableGroups.value.find((group) => group.id === groupID)?.name || ''
 }
 
 onMounted(() => {

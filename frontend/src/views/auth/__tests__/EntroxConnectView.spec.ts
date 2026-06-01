@@ -2,17 +2,21 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import EntroxConnectView from '../EntroxConnectView.vue'
-import type { ApiKey } from '@/types'
+import type { ApiKey, Group } from '@/types'
 
 const {
   apiClientPostMock,
   keysListMock,
+  keysCreateMock,
+  groupsGetAvailableMock,
   showSuccessMock,
   showErrorMock,
   routeState,
 } = vi.hoisted(() => ({
   apiClientPostMock: vi.fn(),
   keysListMock: vi.fn(),
+  keysCreateMock: vi.fn(),
+  groupsGetAvailableMock: vi.fn(),
   showSuccessMock: vi.fn(),
   showErrorMock: vi.fn(),
   routeState: {
@@ -39,6 +43,10 @@ vi.mock('@/api', () => ({
   },
   keysAPI: {
     list: (...args: unknown[]) => keysListMock(...args),
+    create: (...args: unknown[]) => keysCreateMock(...args),
+  },
+  userGroupsAPI: {
+    getAvailable: (...args: unknown[]) => groupsGetAvailableMock(...args),
   },
 }))
 
@@ -48,7 +56,7 @@ function makeAPIKey(overrides: Partial<ApiKey> = {}): ApiKey {
     user_id: 7,
     key: 'sk-existing-1234567890',
     name: 'Existing key',
-    group_id: null,
+    group_id: 3,
     status: 'active',
     ip_whitelist: [],
     ip_blacklist: [],
@@ -74,6 +82,36 @@ function makeAPIKey(overrides: Partial<ApiKey> = {}): ApiKey {
   }
 }
 
+function makeGroup(overrides: Partial<Group> = {}): Group {
+  return {
+    id: 3,
+    name: 'Entrox Pro',
+    description: null,
+    platform: 'entrox',
+    rate_multiplier: 1,
+    is_exclusive: false,
+    status: 'active',
+    subscription_type: 'subscription',
+    daily_limit_usd: null,
+    weekly_limit_usd: null,
+    monthly_limit_usd: null,
+    allow_image_generation: false,
+    image_rate_independent: false,
+    image_rate_multiplier: 1,
+    image_price_1k: null,
+    image_price_2k: null,
+    image_price_4k: null,
+    claude_code_only: false,
+    fallback_group_id: null,
+    fallback_group_id_on_invalid_request: null,
+    require_oauth_only: false,
+    require_privacy_set: false,
+    created_at: '2026-05-29T01:00:00Z',
+    updated_at: '2026-05-29T01:00:00Z',
+    ...overrides,
+  }
+}
+
 function mountView() {
   return mount(EntroxConnectView, {
     global: {
@@ -89,9 +127,13 @@ describe('EntroxConnectView', () => {
   beforeEach(() => {
     apiClientPostMock.mockReset()
     keysListMock.mockReset()
+    keysCreateMock.mockReset()
+    groupsGetAvailableMock.mockReset()
     showSuccessMock.mockReset()
     showErrorMock.mockReset()
     routeState.query = { session_id: 'session-1' }
+    groupsGetAvailableMock.mockResolvedValue([makeGroup()])
+    keysCreateMock.mockResolvedValue(makeAPIKey({ id: 22, name: 'Created key', key: 'sk-created-1234567890' }))
     keysListMock.mockResolvedValue({
       items: [makeAPIKey()],
       total: 1,
@@ -111,6 +153,7 @@ describe('EntroxConnectView', () => {
       sort_by: 'created_at',
       sort_order: 'desc',
     })
+    expect(groupsGetAvailableMock).toHaveBeenCalled()
     expect(apiClientPostMock).not.toHaveBeenCalled()
   })
 
@@ -142,9 +185,10 @@ describe('EntroxConnectView', () => {
     await wrapper.find('[data-testid="entrox-approve-button"]').trigger('click')
     await flushPromises()
 
+    expect(keysCreateMock).toHaveBeenCalledWith(expect.stringMatching(/^entrox CLI /), 3)
     expect(apiClientPostMock).toHaveBeenCalledWith('/auth/entrox/approve', {
       session_id: 'session-1',
-      create_new: true,
+      api_key_id: 22,
     })
   })
 
@@ -156,9 +200,10 @@ describe('EntroxConnectView', () => {
     await wrapper.find('[data-testid="entrox-approve-button"]').trigger('click')
     await flushPromises()
 
+    expect(keysCreateMock).toHaveBeenCalledWith(expect.stringMatching(/^entrox CLI /), 3)
     expect(apiClientPostMock).toHaveBeenCalledWith('/auth/entrox/approve', {
       session_id: 'session-1',
-      create_new: true,
+      api_key_id: 22,
     })
   })
 })

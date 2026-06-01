@@ -95,13 +95,15 @@ func TestApproveEntroxCLIAuthRequiresExplicitAPIKeyChoice(t *testing.T) {
 func TestApproveEntroxCLIAuthUsesSelectedExistingAPIKey(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
+	groupID := int64(3)
 	repo := &testEntroxAPIKeyRepo{}
 	repo.seed(&service.APIKey{
-		ID:     11,
-		UserID: 7,
-		Key:    "sk-existing",
-		Name:   "Existing key",
-		Status: service.StatusActive,
+		ID:      11,
+		UserID:  7,
+		Key:     "sk-existing",
+		Name:    "Existing key",
+		GroupID: &groupID,
+		Status:  service.StatusActive,
 	})
 	h := newTestEntroxCLIAuthHandler(7, repo)
 	seedTestEntroxCLISession(h, "session-existing", "poll-existing")
@@ -132,6 +134,34 @@ func TestApproveEntroxCLIAuthUsesSelectedExistingAPIKey(t *testing.T) {
 	require.JSONEq(t, `{"status":"approved","api_key":"sk-existing"}`, pollResp.Body.String())
 }
 
+func TestApproveEntroxCLIAuthRejectsUnassignedAPIKey(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	repo := &testEntroxAPIKeyRepo{}
+	repo.seed(&service.APIKey{
+		ID:     11,
+		UserID: 7,
+		Key:    "sk-existing",
+		Name:   "Existing key",
+		Status: service.StatusActive,
+	})
+	h := newTestEntroxCLIAuthHandler(7, repo)
+	seedTestEntroxCLISession(h, "session-unassigned", "poll-unassigned")
+	r := newTestEntroxCLIRouter(h, 7)
+
+	resp := postTestEntroxCLIApprove(t, r, `{"session_id":"session-unassigned","api_key_id":11}`)
+
+	require.Equal(t, http.StatusBadRequest, resp.Code)
+	require.Contains(t, resp.Body.String(), "assigned to a group")
+
+	pollReq := httptest.NewRequest(http.MethodGet, "/poll?session_id=session-unassigned&poll_token=poll-unassigned", nil)
+	pollResp := httptest.NewRecorder()
+	r.ServeHTTP(pollResp, pollReq)
+
+	require.Equal(t, http.StatusAccepted, pollResp.Code)
+	require.JSONEq(t, `{"status":"pending"}`, pollResp.Body.String())
+}
+
 func TestApproveEntroxCLIAuthCreatesAPIKeyOnlyWhenRequested(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -140,11 +170,13 @@ func TestApproveEntroxCLIAuthCreatesAPIKeyOnlyWhenRequested(t *testing.T) {
 	seedTestEntroxCLISession(h, "session-new", "poll-new")
 	r := newTestEntroxCLIRouter(h, 7)
 
-	resp := postTestEntroxCLIApprove(t, r, `{"session_id":"session-new","create_new":true}`)
+	resp := postTestEntroxCLIApprove(t, r, `{"session_id":"session-new","create_new":true,"group_id":3}`)
 
 	require.Equal(t, http.StatusOK, resp.Code)
 	require.Len(t, repo.created, 1)
 	require.Equal(t, int64(7), repo.created[0].UserID)
+	require.NotNil(t, repo.created[0].GroupID)
+	require.Equal(t, int64(3), *repo.created[0].GroupID)
 	require.Equal(t, service.StatusActive, repo.created[0].Status)
 	require.NotEmpty(t, repo.created[0].Key)
 
@@ -167,7 +199,18 @@ func newTestEntroxCLIAuthHandler(userID int64, repo *testEntroxAPIKeyRepo) *Auth
 	userRepo := &testEntroxUserRepo{
 		user: &service.User{ID: userID, Email: "user@example.test", Status: service.StatusActive},
 	}
-	apiKeySvc := service.NewAPIKeyService(repo, userRepo, nil, nil, nil, nil, cfg)
+	groupRepo := &testEntroxGroupRepo{
+		byID: map[int64]*service.Group{
+			3: {
+				ID:               3,
+				Name:             "Entrox Pro",
+				Platform:         service.PlatformEntrox,
+				Status:           service.StatusActive,
+				SubscriptionType: service.SubscriptionTypeStandard,
+			},
+		},
+	}
+	apiKeySvc := service.NewAPIKeyService(repo, userRepo, groupRepo, nil, nil, nil, cfg)
 	return NewAuthHandler(nil, nil, nil, nil, nil, nil, nil, apiKeySvc, nil)
 }
 
@@ -266,4 +309,18 @@ func (r *testEntroxAPIKeyRepo) GetByID(ctx context.Context, id int64) (*service.
 
 func (r *testEntroxAPIKeyRepo) ListByUserID(ctx context.Context, userID int64, params pagination.PaginationParams, filters service.APIKeyListFilters) ([]service.APIKey, *pagination.PaginationResult, error) {
 	return nil, nil, nil
+}
+
+type testEntroxGroupRepo struct {
+	service.GroupRepository
+	byID map[int64]*service.Group
+}
+
+func (r *testEntroxGroupRepo) GetByID(ctx context.Context, id int64) (*service.Group, error) {
+	group := r.byID[id]
+	if group == nil {
+		return nil, service.ErrGroupNotFound
+	}
+	clone := *group
+	return &clone, nil
 }

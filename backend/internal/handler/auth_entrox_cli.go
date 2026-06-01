@@ -34,6 +34,7 @@ type approveEntroxCLIRequest struct {
 	SessionID string `json:"session_id" binding:"required"`
 	APIKeyID  *int64 `json:"api_key_id"`
 	CreateNew bool   `json:"create_new"`
+	GroupID   *int64 `json:"group_id"`
 }
 
 type approveEntroxCLIResponse struct {
@@ -215,6 +216,11 @@ func validateApproveEntroxCLIRequest(req approveEntroxCLIRequest) error {
 			"choose an existing api key or create a new one",
 		)
 	}
+	if req.CreateNew {
+		if req.GroupID == nil || *req.GroupID <= 0 {
+			return infraerrors.BadRequest("ENTROX_API_KEY_GROUP_REQUIRED", "group id is required")
+		}
+	}
 	return nil
 }
 
@@ -230,11 +236,18 @@ func (h *AuthHandler) resolveEntroxCLIAPIKey(ctx context.Context, userID int64, 
 		if key.Key == "" || !key.IsActive() || key.IsExpired() || key.IsQuotaExhausted() {
 			return nil, false, infraerrors.BadRequest("ENTROX_API_KEY_UNAVAILABLE", "api key is not available")
 		}
+		if key.GroupID == nil {
+			return nil, false, infraerrors.BadRequest("ENTROX_API_KEY_GROUP_REQUIRED", "api key must be assigned to a group")
+		}
 		return key, false, nil
 	}
 
+	if req.GroupID == nil {
+		return nil, false, infraerrors.BadRequest("ENTROX_API_KEY_GROUP_REQUIRED", "group id is required")
+	}
 	key, err := h.apiKeyService.Create(ctx, userID, service.CreateAPIKeyRequest{
-		Name: "entrox CLI " + now.Format("2006-01-02 15:04"),
+		Name:    "entrox CLI " + now.Format("2006-01-02 15:04"),
+		GroupID: req.GroupID,
 	})
 	if err != nil {
 		return nil, false, err

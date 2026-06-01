@@ -111,6 +111,20 @@ func (s *AccountTestService) validateUpstreamBaseURL(raw string) (string, error)
 	return normalized, nil
 }
 
+func accountTestHTTPErrorMessage(source string, status int, body []byte) string {
+	if source == "" {
+		source = "API"
+	}
+	if status >= http.StatusInternalServerError {
+		return fmt.Sprintf("%s returned %d (upstream server error)", source, status)
+	}
+	trimmed := strings.TrimSpace(string(body))
+	if trimmed == "" {
+		return fmt.Sprintf("%s returned %d", source, status)
+	}
+	return fmt.Sprintf("%s returned %d: %s", source, status, trimmed)
+}
+
 // generateSessionString generates a Claude Code style session string.
 // The output format is determined by the UA version in claude.DefaultHeaders,
 // ensuring consistency between the user_id format and the UA sent to upstream.
@@ -306,7 +320,7 @@ func (s *AccountTestService) testClaudeAccountConnection(c *gin.Context, account
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		errMsg := fmt.Sprintf("API returned %d: %s", resp.StatusCode, string(body))
+		errMsg := accountTestHTTPErrorMessage("API", resp.StatusCode, body)
 
 		// 403 表示账号被上游封禁，标记为 error 状态
 		if resp.StatusCode == http.StatusForbidden {
@@ -378,7 +392,7 @@ func (s *AccountTestService) testClaudeVertexServiceAccountConnection(c *gin.Con
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		errMsg := fmt.Sprintf("API returned %d: %s", resp.StatusCode, string(body))
+		errMsg := accountTestHTTPErrorMessage("API", resp.StatusCode, body)
 		if resp.StatusCode == http.StatusForbidden {
 			_ = s.accountRepo.SetError(ctx, account.ID, errMsg)
 		}
@@ -465,7 +479,7 @@ func (s *AccountTestService) testBedrockAccountConnection(c *gin.Context, ctx co
 	body, _ := io.ReadAll(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
-		return s.sendErrorAndEnd(c, fmt.Sprintf("API returned %d: %s", resp.StatusCode, string(body)))
+		return s.sendErrorAndEnd(c, accountTestHTTPErrorMessage("API", resp.StatusCode, body))
 	}
 
 	// Bedrock non-streaming response is standard Claude JSON, extract the text
@@ -624,7 +638,7 @@ func (s *AccountTestService) testOpenAIAccountConnection(c *gin.Context, account
 			errMsg := fmt.Sprintf("Authentication failed (401): %s", string(body))
 			_ = s.accountRepo.SetError(ctx, account.ID, errMsg)
 		}
-		return s.sendErrorAndEnd(c, fmt.Sprintf("API returned %d: %s", resp.StatusCode, string(body)))
+		return s.sendErrorAndEnd(c, accountTestHTTPErrorMessage("API", resp.StatusCode, body))
 	}
 
 	// Process SSE stream
@@ -685,7 +699,7 @@ func (s *AccountTestService) testOpenAIChatCompletionsConnection(
 			errMsg := fmt.Sprintf("Chat Completions authentication failed (401): %s", string(body))
 			_ = s.accountRepo.SetError(ctx, account.ID, errMsg)
 		}
-		return s.sendErrorAndEnd(c, fmt.Sprintf("Chat Completions API (/v1/chat/completions) returned %d: %s", resp.StatusCode, string(body)))
+		return s.sendErrorAndEnd(c, accountTestHTTPErrorMessage("Chat Completions API (/v1/chat/completions)", resp.StatusCode, body))
 	}
 
 	return s.processOpenAIChatCompletionsStream(c, resp.Body)
@@ -799,7 +813,7 @@ func (s *AccountTestService) testOpenAICompactConnection(c *gin.Context, account
 			errMsg := fmt.Sprintf("Authentication failed (401): %s", string(body))
 			_ = s.accountRepo.SetError(ctx, account.ID, errMsg)
 		}
-		return s.sendErrorAndEnd(c, fmt.Sprintf("API returned %d: %s", resp.StatusCode, string(body)))
+		return s.sendErrorAndEnd(c, accountTestHTTPErrorMessage("API", resp.StatusCode, body))
 	}
 
 	s.sendEvent(c, TestEvent{Type: "content", Text: "Compact probe succeeded"})
@@ -908,7 +922,7 @@ func (s *AccountTestService) testGeminiAccountConnection(c *gin.Context, account
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return s.sendErrorAndEnd(c, fmt.Sprintf("API returned %d: %s", resp.StatusCode, string(body)))
+		return s.sendErrorAndEnd(c, accountTestHTTPErrorMessage("API", resp.StatusCode, body))
 	}
 
 	// Process SSE stream
@@ -1529,7 +1543,7 @@ func (s *AccountTestService) testOpenAIImageAPIKey(c *gin.Context, ctx context.C
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return s.sendErrorAndEnd(c, fmt.Sprintf("API returned %d: %s", resp.StatusCode, string(body)))
+		return s.sendErrorAndEnd(c, accountTestHTTPErrorMessage("API", resp.StatusCode, body))
 	}
 
 	// Parse {"data": [{"b64_json": "...", "revised_prompt": "..."}]}

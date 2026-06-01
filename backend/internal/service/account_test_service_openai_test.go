@@ -162,6 +162,40 @@ func TestAccountTestService_OpenAIStreamEOFBeforeCompletedFails(t *testing.T) {
 	require.NotContains(t, recorder.Body.String(), `"success":true`)
 }
 
+func TestAccountTestService_ClaudeUpstreamServerErrorHidesBody(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	ctx, recorder := newTestContext()
+
+	resp := newJSONResponse(http.StatusInternalServerError, `{"type":"error","error":{"message":"Codex token refresh failed: secret upstream detail"}}`)
+
+	upstream := &queuedHTTPUpstream{responses: []*http.Response{resp}}
+	svc := &AccountTestService{
+		httpUpstream: upstream,
+		cfg: &config.Config{Security: config.SecurityConfig{
+			URLAllowlist: config.URLAllowlistConfig{Enabled: false},
+		}},
+	}
+	account := &Account{
+		ID:          91,
+		Platform:    PlatformAnthropic,
+		Type:        AccountTypeAPIKey,
+		Concurrency: 1,
+		Credentials: map[string]any{
+			"api_key":  "test-key",
+			"base_url": "https://upstream.example.test/anthropic",
+		},
+	}
+
+	err := svc.testClaudeAccountConnection(ctx, account, "claude-sonnet-4-20250514")
+	require.Error(t, err)
+
+	body := recorder.Body.String()
+	require.Contains(t, body, "API returned 500")
+	require.Contains(t, body, "upstream server error")
+	require.NotContains(t, body, "Codex token refresh failed")
+	require.NotContains(t, body, "secret upstream detail")
+}
+
 func TestAccountTestService_OpenAI429PersistsSnapshotAndRateLimitState(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	ctx, _ := newTestContext()

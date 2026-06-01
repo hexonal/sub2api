@@ -1,12 +1,13 @@
 package routes
 
 import (
+	"context"
 	_ "embed"
-	"io"
+	"errors"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -14,7 +15,10 @@ import (
 const sub2APIOpenCodeTokenEnv = "SUB2API_API_KEY"
 const sub2APIOpenCodeProviderID = "entrox"
 const sub2APIOpenCodeDynamicConfigPath = "/api/v1/entrox/opencode/config"
-const entroxDevReleaseFallbackBaseURL = "https://github.com/hexonal/entrox/releases/download/entrox-dev"
+
+type entroxDownloadMirrorResolver interface {
+	GetEntroxDownloadMirrorBaseURL(ctx context.Context) (string, error)
+}
 
 //go:embed entrox_install.sh
 var entroxInstallScript string
@@ -23,7 +27,12 @@ var entroxInstallScript string
 var entroxInstallPowerShellScript string
 
 // RegisterCommonRoutes 注册通用路由（健康检查、状态等）
-func RegisterCommonRoutes(r *gin.Engine) {
+func RegisterCommonRoutes(r *gin.Engine, resolvers ...entroxDownloadMirrorResolver) {
+	var mirrorResolver entroxDownloadMirrorResolver
+	if len(resolvers) > 0 {
+		mirrorResolver = resolvers[0]
+	}
+
 	// 健康检查
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
@@ -46,13 +55,16 @@ func RegisterCommonRoutes(r *gin.Engine) {
 			return
 		}
 
-		baseURL := strings.TrimRight(os.Getenv("ENTROX_DOWNLOAD_MIRROR_BASE_URL"), "/")
-		if baseURL != "" {
-			c.Redirect(http.StatusTemporaryRedirect, baseURL+"/"+asset)
+		baseURL, err := entroxDownloadMirrorBaseURL(c.Request.Context(), mirrorResolver)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Entrox download mirror is invalid")
 			return
 		}
-
-		proxyEntroxDevReleaseAsset(c, entroxDevReleaseFallbackBaseURL+"/"+asset)
+		if baseURL == "" {
+			c.String(http.StatusServiceUnavailable, "Entrox download mirror is not configured")
+			return
+		}
+		c.Redirect(http.StatusTemporaryRedirect, baseURL+"/"+asset)
 	})
 
 	r.GET("/.well-known/opencode", func(c *gin.Context) {
@@ -129,28 +141,36 @@ func firstHeaderValue(value string) string {
 	return strings.TrimSpace(value)
 }
 
-func proxyEntroxDevReleaseAsset(c *gin.Context, url string) {
-	req, err := http.NewRequestWithContext(c.Request.Context(), http.MethodGet, url, nil)
-	if err != nil {
-		c.AbortWithStatus(http.StatusInternalServerError)
-		return
-	}
-
-	client := &http.Client{Timeout: 10 * time.Minute}
-	resp, err := client.Do(req)
-	if err != nil {
-		c.AbortWithStatus(http.StatusBadGateway)
-		return
-	}
-	defer resp.Body.Close()
-
-	for _, header := range []string{"Content-Type", "Content-Length", "ETag", "Last-Modified"} {
-		if value := resp.Header.Get(header); value != "" {
-			c.Header(header, value)
+func entroxDownloadMirrorBaseURL(ctx context.Context, resolver entroxDownloadMirrorResolver) (string, error) {
+	if resolver != nil {
+		baseURL, err := resolver.GetEntroxDownloadMirrorBaseURL(ctx)
+		if err != nil {
+			return "", err
+		}
+		if baseURL != "" {
+			return normalizeEntroxDownloadMirrorBaseURL(baseURL)
 		}
 	}
-	c.Status(resp.StatusCode)
-	_, _ = io.Copy(c.Writer, resp.Body)
+	return normalizeEntroxDownloadMirrorBaseURL(os.Getenv("ENTROX_DOWNLOAD_MIRROR_BASE_URL"))
+}
+
+func normalizeEntroxDownloadMirrorBaseURL(raw string) (string, error) {
+	raw = strings.TrimRight(strings.TrimSpace(raw), "/")
+	if raw == "" {
+		return "", nil
+	}
+
+	parsed, err := url.Parse(raw)
+	if err != nil {
+		return "", err
+	}
+	if parsed.Host == "" || (parsed.Scheme != "https" && parsed.Scheme != "http") {
+		return "", errors.New("download mirror must be an absolute http(s) URL")
+	}
+	if parsed.RawQuery != "" || parsed.Fragment != "" {
+		return "", errors.New("download mirror must not include query or fragment")
+	}
+	return raw, nil
 }
 
 func isEntroxDevReleaseAsset(asset string) bool {

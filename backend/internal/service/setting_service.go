@@ -692,6 +692,20 @@ func (s *SettingService) GetFrontendURL(ctx context.Context) string {
 	return s.cfg.Server.FrontendURL
 }
 
+func (s *SettingService) GetEntroxDownloadMirrorBaseURL(ctx context.Context) (string, error) {
+	if s == nil || s.settingRepo == nil {
+		return "", nil
+	}
+	value, err := s.settingRepo.GetValue(ctx, SettingKeyEntroxDownloadMirrorBaseURL)
+	if err != nil {
+		if errors.Is(err, ErrSettingNotFound) {
+			return "", nil
+		}
+		return "", fmt.Errorf("get entrox download mirror base url: %w", err)
+	}
+	return strings.TrimSpace(value), nil
+}
+
 // GetPublicSettings 获取公开设置（无需登录）
 func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings, error) {
 	keys := []string{

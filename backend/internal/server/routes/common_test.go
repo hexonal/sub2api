@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -9,6 +10,15 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
+
+type testEntroxDownloadMirrorResolver struct {
+	value string
+	err   error
+}
+
+func (r testEntroxDownloadMirrorResolver) GetEntroxDownloadMirrorBaseURL(context.Context) (string, error) {
+	return r.value, r.err
+}
 
 func TestRegisterCommonRoutesWellKnownOpenCode(t *testing.T) {
 	gin.SetMode(gin.TestMode)
@@ -108,6 +118,9 @@ func TestRegisterCommonRoutesEntroxInstallRedirect(t *testing.T) {
 	if !strings.Contains(body, "ENTROX_DOWNLOAD_BASE_URL") {
 		t.Fatalf("expected mirror-aware installer, got %q", body)
 	}
+	if !strings.Contains(body, `DOWNLOAD_BASE_URL=${ENTROX_DOWNLOAD_BASE_URL:-"${INSTALL_BASE_URL%/}/downloads/entrox-dev"}`) {
+		t.Fatalf("expected installer to default through service download route, got %q", body)
+	}
 }
 
 func TestRegisterCommonRoutesEntroxInstallPowerShell(t *testing.T) {
@@ -135,9 +148,32 @@ func TestRegisterCommonRoutesEntroxInstallPowerShell(t *testing.T) {
 	if !strings.Contains(body, "ENTROX_DOWNLOAD_BASE_URL") {
 		t.Fatalf("expected mirror-aware PowerShell installer, got %q", body)
 	}
+	if !strings.Contains(body, `"$InstallBaseUrl/downloads/entrox-dev"`) {
+		t.Fatalf("expected PowerShell installer to default through service download route, got %q", body)
+	}
 }
 
-func TestRegisterCommonRoutesEntroxDevDownloadRedirectUsesMirror(t *testing.T) {
+func TestRegisterCommonRoutesEntroxDevDownloadRedirectUsesDatabaseMirror(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	router := gin.New()
+	RegisterCommonRoutes(router, testEntroxDownloadMirrorResolver{value: "https://download.example.test/entrox-dev/"})
+
+	req := httptest.NewRequest(http.MethodGet, "/downloads/entrox-dev/entrox-cli-windows-x64.zip", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusTemporaryRedirect {
+		t.Fatalf("expected redirect status, got %d: %s", rec.Code, rec.Body.String())
+	}
+	expected := "https://download.example.test/entrox-dev/entrox-cli-windows-x64.zip"
+	if rec.Header().Get("Location") != expected {
+		t.Fatalf("expected redirect to %q, got %q", expected, rec.Header().Get("Location"))
+	}
+}
+
+func TestRegisterCommonRoutesEntroxDevDownloadRedirectUsesEnvFallback(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	t.Setenv("ENTROX_DOWNLOAD_MIRROR_BASE_URL", "https://oss.example.test/entrox-dev/")
 
@@ -155,6 +191,22 @@ func TestRegisterCommonRoutesEntroxDevDownloadRedirectUsesMirror(t *testing.T) {
 	expected := "https://oss.example.test/entrox-dev/entrox-cli-windows-x64.zip"
 	if rec.Header().Get("Location") != expected {
 		t.Fatalf("expected redirect to %q, got %q", expected, rec.Header().Get("Location"))
+	}
+}
+
+func TestRegisterCommonRoutesEntroxDevDownloadRequiresConfiguredMirror(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	router := gin.New()
+	RegisterCommonRoutes(router)
+
+	req := httptest.NewRequest(http.MethodGet, "/downloads/entrox-dev/entrox-cli-windows-x64.zip", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected 503, got %d: %s", rec.Code, rec.Body.String())
 	}
 }
 

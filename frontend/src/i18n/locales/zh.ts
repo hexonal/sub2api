@@ -96,7 +96,6 @@ export default {
       soon: '即将推出',
       claude: 'Claude',
       gemini: 'Gemini',
-      antigravity: 'Antigravity',
       entrox: 'Entrox',
       more: '更多'
     },

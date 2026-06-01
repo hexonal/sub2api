@@ -162,6 +162,29 @@ func TestApproveEntroxCLIAuthRejectsUnassignedAPIKey(t *testing.T) {
 	require.JSONEq(t, `{"status":"pending"}`, pollResp.Body.String())
 }
 
+func TestApproveEntroxCLIAuthRejectsNonEntroxAPIKeyGroup(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	groupID := int64(4)
+	repo := &testEntroxAPIKeyRepo{}
+	repo.seed(&service.APIKey{
+		ID:      11,
+		UserID:  7,
+		Key:     "sk-existing",
+		Name:    "Existing key",
+		GroupID: &groupID,
+		Status:  service.StatusActive,
+	})
+	h := newTestEntroxCLIAuthHandler(7, repo)
+	seedTestEntroxCLISession(h, "session-wrong-platform", "poll-wrong-platform")
+	r := newTestEntroxCLIRouter(h, 7)
+
+	resp := postTestEntroxCLIApprove(t, r, `{"session_id":"session-wrong-platform","api_key_id":11}`)
+
+	require.Equal(t, http.StatusBadRequest, resp.Code)
+	require.Contains(t, resp.Body.String(), "entrox group")
+}
+
 func TestApproveEntroxCLIAuthCreatesAPIKeyOnlyWhenRequested(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -193,6 +216,21 @@ func TestApproveEntroxCLIAuthCreatesAPIKeyOnlyWhenRequested(t *testing.T) {
 	require.True(t, body.Data.Created)
 }
 
+func TestApproveEntroxCLIAuthRejectsNewAPIKeyForNonEntroxGroup(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	repo := &testEntroxAPIKeyRepo{}
+	h := newTestEntroxCLIAuthHandler(7, repo)
+	seedTestEntroxCLISession(h, "session-new-wrong-platform", "poll-new-wrong-platform")
+	r := newTestEntroxCLIRouter(h, 7)
+
+	resp := postTestEntroxCLIApprove(t, r, `{"session_id":"session-new-wrong-platform","create_new":true,"group_id":4}`)
+
+	require.Equal(t, http.StatusBadRequest, resp.Code)
+	require.Contains(t, resp.Body.String(), "entrox group")
+	require.Len(t, repo.created, 0)
+}
+
 func newTestEntroxCLIAuthHandler(userID int64, repo *testEntroxAPIKeyRepo) *AuthHandler {
 	cfg := &config.Config{}
 	cfg.Default.APIKeyPrefix = "sk-"
@@ -205,6 +243,13 @@ func newTestEntroxCLIAuthHandler(userID int64, repo *testEntroxAPIKeyRepo) *Auth
 				ID:               3,
 				Name:             "Entrox Pro",
 				Platform:         service.PlatformEntrox,
+				Status:           service.StatusActive,
+				SubscriptionType: service.SubscriptionTypeStandard,
+			},
+			4: {
+				ID:               4,
+				Name:             "OpenAI Pro",
+				Platform:         service.PlatformOpenAI,
 				Status:           service.StatusActive,
 				SubscriptionType: service.SubscriptionTypeStandard,
 			},

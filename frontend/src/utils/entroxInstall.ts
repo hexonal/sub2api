@@ -12,7 +12,7 @@ export function isCnInstallLocale(locale: unknown): boolean {
 
 export function getEntroxHomebrewInstallCommand(isCn: boolean): string {
   if (!isCn) {
-    return 'brew tap hexonal/entrox\nbrew install entrox'
+    return 'brew tap hexonal/entrox\n(brew trust hexonal/entrox || true)\nHOMEBREW_NO_AUTO_UPDATE=1 brew install hexonal/entrox/entrox'
   }
 
   return `# 中国大陆网络：如 GitHub 连接失败，先按你的本机代理地址修改并执行下面两行
@@ -20,15 +20,20 @@ export function getEntroxHomebrewInstallCommand(isCn: boolean): string {
 # export HTTP_PROXY="$HTTPS_PROXY"
 
 brew tap hexonal/entrox
-brew install entrox`
+(brew trust hexonal/entrox || true)
+HOMEBREW_NO_AUTO_UPDATE=1 brew install hexonal/entrox/entrox`
 }
 
 export function getEntroxScoopInstallCommand(isCn: boolean): string {
   if (!isCn) {
-    return 'scoop bucket add entrox https://github.com/hexonal/scoop-entrox\nscoop install entrox'
+    return '# Install Scoop first if it is not already installed\nSet-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser\nInvoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression\n\nscoop bucket add entrox https://github.com/hexonal/scoop-entrox\nscoop install entrox'
   }
 
-  return `# 中国大陆网络：如 GitHub 连接失败，先按你的本机代理地址修改并执行下面一行
+  return `# 如果尚未安装 Scoop，先用 PowerShell 执行下面两行
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
+
+# 中国大陆网络：如 GitHub 连接失败，先按你的本机代理地址修改并执行下面一行
 # scoop config proxy 127.0.0.1:<你的代理端口>
 
 scoop bucket add entrox https://github.com/hexonal/scoop-entrox

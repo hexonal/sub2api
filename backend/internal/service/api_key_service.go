@@ -458,6 +458,14 @@ func (s *APIKeyService) GetByID(ctx context.Context, id int64) (*APIKey, error) 
 	return apiKey, nil
 }
 
+func (s *APIKeyService) GetBindingGroupByID(ctx context.Context, id int64) (*Group, error) {
+	group, err := s.groupRepo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("get group: %w", err)
+	}
+	return group, nil
+}
+
 // GetByKey 根据Key字符串获取API Key（用于认证）
 func (s *APIKeyService) GetByKey(ctx context.Context, key string) (*APIKey, error) {
 	cacheKey := s.authCacheKey(key)

@@ -154,7 +154,8 @@ describe('HomeView', () => {
     expect(wrapper.text()).not.toContain('curl -fsSL https://entrox.996icu.wiki/install | bash')
     expect(wrapper.text()).not.toContain('Script')
     expect(wrapper.text()).toContain('brew tap hexonal/entrox')
-    expect(wrapper.text()).toContain('brew install entrox')
+    expect(wrapper.text()).toContain('brew trust hexonal/entrox')
+    expect(wrapper.text()).toContain('HOMEBREW_NO_AUTO_UPDATE=1 brew install hexonal/entrox/entrox')
 
     const homebrewTab = wrapper.findAll('button').find((button) => button.text() === 'Homebrew')
     expect(homebrewTab).toBeDefined()
@@ -162,6 +163,8 @@ describe('HomeView', () => {
     const scoopTab = wrapper.findAll('button').find((button) => button.text() === 'Scoop')
     expect(scoopTab).toBeDefined()
     await scoopTab!.trigger('click')
+    expect(wrapper.text()).toContain('Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser')
+    expect(wrapper.text()).toContain('Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression')
     expect(wrapper.text()).toContain('scoop bucket add entrox https://github.com/hexonal/scoop-entrox')
     expect(wrapper.text()).toContain('scoop install entrox')
   })

@@ -83,7 +83,7 @@
               创建新的 API Key
             </span>
             <span class="mt-1 block text-xs text-gray-500 dark:text-dark-400">
-              将为本次 entrox CLI 登录生成一个新的分组 SK。
+              将为本次 entrox CLI 登录生成一个新的 Entrox 分组 SK。
             </span>
             <select
               v-if="availableGroups.length > 0"
@@ -190,22 +190,22 @@ async function loadAPIKeys(): Promise<void> {
       }),
       userGroupsAPI.getAvailable(),
     ])
-    availableGroups.value = groups.filter((group) => group.status === 'active')
+    availableGroups.value = groups.filter((group) => group.status === 'active' && group.platform === 'entrox')
     const availableGroupIDs = new Set(availableGroups.value.map((group) => group.id))
     selectedGroupID.value = availableGroups.value[0]?.id ?? null
     apiKeys.value = result.items.filter((key) => key.group_id !== null && availableGroupIDs.has(key.group_id))
     if (apiKeys.value.length > 0) {
       selectedMode.value = 'existing'
       selectedAPIKeyID.value = apiKeys.value[0].id
-      message.value = '选择一个已绑定分组的 SK，或创建新的分组 API Key。'
+      message.value = '选择一个已绑定 Entrox 分组的 SK，或创建新的 Entrox API Key。'
     } else if (availableGroups.value.length > 0) {
       selectedMode.value = 'create'
       selectedAPIKeyID.value = null
-      message.value = '当前账号没有已绑定分组的 SK，可以选择分组创建新的 API Key。'
+      message.value = '当前账号没有已绑定 Entrox 分组的 SK，可以选择 Entrox 分组创建新的 API Key。'
     } else {
       selectedMode.value = 'create'
       selectedAPIKeyID.value = null
-      message.value = '当前账号没有可绑定分组，请先购买订阅或联系管理员分配分组。'
+      message.value = '当前账号没有可绑定的 Entrox 分组，请先购买订阅或联系管理员分配分组。'
     }
     status.value = 'ready'
   } catch (error) {
@@ -224,7 +224,7 @@ async function approve(): Promise<void> {
   }
   if (!canApprove.value) {
     status.value = 'error'
-    message.value = selectedMode.value === 'create' ? '请选择可绑定分组。' : '请选择一个已绑定分组的 API Key。'
+    message.value = selectedMode.value === 'create' ? '请选择可绑定的 Entrox 分组。' : '请选择一个已绑定 Entrox 分组的 API Key。'
     return
   }
 
@@ -255,7 +255,7 @@ async function buildApprovePayload(): Promise<{ session_id: string; api_key_id: 
     }
   }
   if (selectedGroupID.value === null) {
-    throw new Error('请选择可绑定分组。')
+    throw new Error('请选择可绑定的 Entrox 分组。')
   }
   const key = await keysAPI.create(`entrox CLI ${new Date().toLocaleString()}`, selectedGroupID.value)
   return {

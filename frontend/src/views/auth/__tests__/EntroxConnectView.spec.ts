@@ -192,6 +192,59 @@ describe('EntroxConnectView', () => {
     })
   })
 
+  it('creates new keys only against active Entrox groups', async () => {
+    groupsGetAvailableMock.mockResolvedValue([
+      makeGroup({ id: 4, name: 'OpenAI Pro', platform: 'openai' }),
+      makeGroup({ id: 3, name: 'Entrox Pro', platform: 'entrox' }),
+    ])
+    keysListMock.mockResolvedValue({
+      items: [],
+      total: 0,
+      page: 1,
+      page_size: 100,
+      pages: 1,
+    })
+    const wrapper = mountView()
+
+    await flushPromises()
+    await wrapper.find('[data-testid="entrox-approve-button"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).not.toContain('OpenAI Pro / openai')
+    expect(keysCreateMock).toHaveBeenCalledWith(expect.stringMatching(/^entrox CLI /), 3)
+  })
+
+  it('only offers existing keys bound to active Entrox groups', async () => {
+    groupsGetAvailableMock.mockResolvedValue([
+      makeGroup({ id: 4, name: 'OpenAI Pro', platform: 'openai' }),
+      makeGroup({ id: 5, name: 'Disabled Entrox', platform: 'entrox', status: 'disabled' }),
+      makeGroup({ id: 3, name: 'Entrox Pro', platform: 'entrox' }),
+    ])
+    keysListMock.mockResolvedValue({
+      items: [
+        makeAPIKey({ id: 10, name: 'OpenAI key', group_id: 4 }),
+        makeAPIKey({ id: 12, name: 'Disabled Entrox key', group_id: 5 }),
+        makeAPIKey({ id: 11, name: 'Entrox key', group_id: 3 }),
+      ],
+      total: 3,
+      page: 1,
+      page_size: 100,
+      pages: 1,
+    })
+    const wrapper = mountView()
+
+    await flushPromises()
+    await wrapper.find('[data-testid="entrox-approve-button"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).not.toContain('OpenAI key')
+    expect(wrapper.text()).not.toContain('Disabled Entrox key')
+    expect(apiClientPostMock).toHaveBeenCalledWith('/auth/entrox/approve', {
+      session_id: 'session-1',
+      api_key_id: 11,
+    })
+  })
+
   it('allows choosing new api key creation even when existing keys are available', async () => {
     const wrapper = mountView()
 

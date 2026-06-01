@@ -239,11 +239,29 @@ func (h *AuthHandler) resolveEntroxCLIAPIKey(ctx context.Context, userID int64, 
 		if key.GroupID == nil {
 			return nil, false, infraerrors.BadRequest("ENTROX_API_KEY_GROUP_REQUIRED", "api key must be assigned to a group")
 		}
+		group := key.Group
+		if group == nil {
+			resolvedGroup, err := h.apiKeyService.GetBindingGroupByID(ctx, *key.GroupID)
+			if err != nil {
+				return nil, false, err
+			}
+			group = resolvedGroup
+		}
+		if err := validateEntroxCLIGroup(group); err != nil {
+			return nil, false, err
+		}
 		return key, false, nil
 	}
 
 	if req.GroupID == nil {
 		return nil, false, infraerrors.BadRequest("ENTROX_API_KEY_GROUP_REQUIRED", "group id is required")
+	}
+	group, err := h.apiKeyService.GetBindingGroupByID(ctx, *req.GroupID)
+	if err != nil {
+		return nil, false, err
+	}
+	if err := validateEntroxCLIGroup(group); err != nil {
+		return nil, false, err
 	}
 	key, err := h.apiKeyService.Create(ctx, userID, service.CreateAPIKeyRequest{
 		Name:    "entrox CLI " + now.Format("2006-01-02 15:04"),
@@ -253,6 +271,19 @@ func (h *AuthHandler) resolveEntroxCLIAPIKey(ctx context.Context, userID int64, 
 		return nil, false, err
 	}
 	return key, true, nil
+}
+
+func validateEntroxCLIGroup(group *service.Group) error {
+	if group == nil {
+		return infraerrors.BadRequest("ENTROX_API_KEY_GROUP_REQUIRED", "api key group is required")
+	}
+	if !group.IsActive() {
+		return infraerrors.BadRequest("ENTROX_API_KEY_GROUP_UNAVAILABLE", "api key group is not available")
+	}
+	if group.Platform != service.PlatformEntrox {
+		return infraerrors.BadRequest("ENTROX_API_KEY_GROUP_PLATFORM_REQUIRED", "api key group must be an entrox group")
+	}
+	return nil
 }
 
 func (h *AuthHandler) cleanupExpiredEntroxCLISessionsLocked(now time.Time) {

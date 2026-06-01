@@ -18,10 +18,59 @@ export default {
       homebrew: 'Homebrew',
       scoop: 'Scoop'
     },
-    tags: {
-      subscriptionToApi: '订阅转 API',
-      stickySession: '会话保持',
-      realtimeBilling: '按量计费'
+    desktop: {
+      badge: '客户端下载',
+      title: 'Entrox Desktop',
+      description:
+        '桌面端 AI 编程工作台。登录 Entrox 后自动同步模型与证书，统一管理项目会话、模型切换、提示词队列和 MCP 工具，让长程编码任务更可控。',
+      download: '下载',
+      downloadPending: '下载地址待配置',
+      platforms: {
+        mac: {
+          title: 'macOS 客户端',
+          description: '适用于 Apple Silicon 和 Intel Mac'
+        },
+        windows: {
+          title: 'Windows 客户端',
+          description: '适用于 Windows 10/11 桌面环境'
+        },
+        linux: {
+          title: 'Linux 客户端',
+          description: '适用于主流发行版的 AppImage'
+        }
+      }
+    },
+    pricing: {
+      badge: '个人订阅',
+      title: '选择你的 Entrox 个人版',
+      description: '套餐包含 Entrox Desktop、Entrox CLI、网关接入和每月模型用量额度。',
+      recommended: '推荐',
+      month: '/月',
+      cta: '订阅',
+      note: '月度用量随订阅周期刷新，仅限个人使用，不包含团队席位或转售场景。',
+      plans: {
+        pro: {
+          name: 'PRO',
+          subtitle: '适合轻量个人编码',
+          usage: '1x 月度用量额度',
+          concurrency: '1 个并发 Agent 任务',
+          queue: '标准队列'
+        },
+        plus: {
+          name: 'PLUS',
+          subtitle: '适合日常 AI 编程主力使用',
+          usage: '3.5x 月度用量额度',
+          concurrency: '3 个并发 Agent 任务',
+          queue: '优先队列'
+        },
+        ultra: {
+          name: 'Ultra',
+          subtitle: '适合重度 Agent 工作流',
+          usage: '10x 月度用量额度',
+          concurrency: '6-8 个并发 Agent 任务',
+          queue: '最高优先级队列'
+        }
+      }
     },
     // 用户痛点区块
     painPoints: {
@@ -55,8 +104,8 @@ export default {
       unifiedGatewayDesc: '获取一个 API 密钥，即可调用所有已接入的 AI 模型，无需分别申请。',
       multiAccount: '稳定可靠',
       multiAccountDesc: '智能调度多个上游账号，自动切换和负载均衡，告别频繁报错。',
-      balanceQuota: '用多少付多少',
-      balanceQuotaDesc: '按实际使用量计费，支持设置配额上限，团队用量一目了然。'
+      balanceQuota: '订阅内用量',
+      balanceQuotaDesc: '每档套餐包含月度模型额度，支持配额上限和用量明细，个人使用成本更可控。'
     },
     // 优势对比
     comparison: {
@@ -70,7 +119,7 @@ export default {
         pricing: {
           feature: '付费方式',
           official: '固定月费，用不完也付',
-          us: '按量付费，用多少付多少'
+          us: '个人订阅，月度额度清晰可控'
         },
         models: {
           feature: '模型选择',

@@ -116,7 +116,7 @@
         <!-- Hero Section - Left/Right Layout -->
         <div class="mb-12 flex flex-col items-center justify-between gap-12 lg:flex-row lg:gap-16">
           <!-- Left: Text Content -->
-          <div class="flex-1 text-center lg:text-left">
+          <div class="w-full min-w-0 flex-1 text-center lg:text-left">
             <h1
               class="mb-4 text-4xl font-bold text-gray-900 dark:text-white md:text-5xl lg:text-6xl"
             >
@@ -172,13 +172,13 @@
                 </div>
               </div>
               <pre
-                class="min-h-[52px] overflow-x-auto rounded-xl bg-gray-950 px-4 py-3 text-sm leading-6 text-gray-100 shadow-inner"
+                class="min-h-[52px] overflow-x-auto whitespace-pre-wrap break-all rounded-xl bg-gray-950 px-4 py-3 text-xs leading-6 text-gray-100 shadow-inner sm:text-sm"
               ><code>{{ activeInstallMethodConfig.command }}</code></pre>
             </div>
           </div>
 
           <!-- Right: Terminal Animation -->
-          <div class="flex flex-1 justify-center lg:justify-end">
+          <div class="flex w-full min-w-0 flex-1 justify-center lg:justify-end">
             <div class="terminal-container">
               <div class="terminal-window">
                 <!-- Window header -->
@@ -214,33 +214,166 @@
           </div>
         </div>
 
-        <!-- Feature Tags - Centered -->
-        <div class="mb-12 flex flex-wrap items-center justify-center gap-4 md:gap-6">
-          <div
-            class="inline-flex items-center gap-2.5 rounded-full border border-gray-200/50 bg-white/80 px-5 py-2.5 shadow-sm backdrop-blur-sm dark:border-dark-700/50 dark:bg-dark-800/80"
-          >
-            <Icon name="swap" size="sm" class="text-primary-500" />
-            <span class="text-sm font-medium text-gray-700 dark:text-dark-200">{{
-              t('home.tags.subscriptionToApi')
-            }}</span>
+        <!-- Entrox Desktop Downloads -->
+        <section
+          class="mb-12 overflow-hidden rounded-3xl border border-gray-200/60 bg-white/75 shadow-sm backdrop-blur-sm dark:border-dark-700/60 dark:bg-dark-900/75"
+        >
+          <div class="grid lg:grid-cols-[0.95fr_1.4fr]">
+            <div
+              class="relative overflow-hidden bg-gradient-to-br from-gray-950 via-slate-900 to-primary-950 p-8 text-white sm:p-10"
+            >
+              <div
+                class="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:56px_56px] opacity-40"
+              ></div>
+              <div class="relative">
+                <div
+                  class="mb-8 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-primary-100 shadow-sm"
+                >
+                  <Icon name="download" size="sm" />
+                  {{ t('home.desktop.badge') }}
+                </div>
+                <h2 class="mb-5 text-3xl font-bold tracking-normal sm:text-4xl">
+                  {{ t('home.desktop.title') }}
+                </h2>
+                <p class="max-w-md text-base leading-8 text-gray-300">
+                  {{ t('home.desktop.description') }}
+                </p>
+              </div>
+            </div>
+
+            <div class="grid gap-4 p-5 sm:p-8 md:grid-cols-3">
+              <article
+                v-for="platform in desktopPlatforms"
+                :key="platform.id"
+                class="flex min-h-[240px] flex-col rounded-2xl border border-gray-200/80 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-primary-500/10 dark:border-dark-700/80 dark:bg-dark-800"
+              >
+                <div
+                  :class="[
+                    'mb-6 flex h-16 w-16 items-center justify-center rounded-2xl text-xl font-bold text-white shadow-lg',
+                    platform.iconClass
+                  ]"
+                >
+                  {{ platform.badge }}
+                </div>
+                <h3 class="mb-3 text-lg font-semibold text-gray-900 dark:text-white">
+                  {{ t(platform.titleKey) }}
+                </h3>
+                <p class="mb-6 text-sm leading-6 text-gray-500 dark:text-dark-300">
+                  {{ t(platform.descriptionKey) }}
+                </p>
+                <a
+                  v-if="platform.downloadUrl"
+                  :href="platform.downloadUrl"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="mt-auto inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-gray-900 px-4 text-sm font-semibold text-white transition-colors hover:bg-gray-800 dark:bg-primary-600 dark:hover:bg-primary-500"
+                >
+                  <Icon name="download" size="sm" :stroke-width="2" />
+                  {{ t('home.desktop.download') }}
+                </a>
+                <button
+                  v-else
+                  type="button"
+                  disabled
+                  :title="t('home.desktop.downloadPending')"
+                  class="mt-auto inline-flex h-10 cursor-not-allowed items-center justify-center gap-2 rounded-lg border border-gray-200 bg-gray-100 px-4 text-sm font-semibold text-gray-400 dark:border-dark-700 dark:bg-dark-900 dark:text-dark-500"
+                >
+                  <Icon name="download" size="sm" :stroke-width="2" />
+                  {{ t('home.desktop.download') }}
+                </button>
+              </article>
+            </div>
           </div>
-          <div
-            class="inline-flex items-center gap-2.5 rounded-full border border-gray-200/50 bg-white/80 px-5 py-2.5 shadow-sm backdrop-blur-sm dark:border-dark-700/50 dark:bg-dark-800/80"
-          >
-            <Icon name="shield" size="sm" class="text-primary-500" />
-            <span class="text-sm font-medium text-gray-700 dark:text-dark-200">{{
-              t('home.tags.stickySession')
-            }}</span>
+        </section>
+
+        <!-- Personal Subscription Pricing -->
+        <section class="mb-12">
+          <div class="mb-7 text-center">
+            <div
+              class="mb-4 inline-flex items-center gap-2 rounded-full border border-primary-200/70 bg-white/80 px-4 py-2 text-sm font-semibold text-primary-700 shadow-sm backdrop-blur-sm dark:border-primary-800/60 dark:bg-dark-800/80 dark:text-primary-300"
+            >
+              <Icon name="creditCard" size="sm" />
+              {{ t('home.pricing.badge') }}
+            </div>
+            <h2 class="mb-3 text-3xl font-bold tracking-normal text-gray-900 dark:text-white">
+              {{ t('home.pricing.title') }}
+            </h2>
+            <p class="mx-auto max-w-2xl text-base leading-7 text-gray-600 dark:text-dark-300">
+              {{ t('home.pricing.description') }}
+            </p>
           </div>
-          <div
-            class="inline-flex items-center gap-2.5 rounded-full border border-gray-200/50 bg-white/80 px-5 py-2.5 shadow-sm backdrop-blur-sm dark:border-dark-700/50 dark:bg-dark-800/80"
-          >
-            <Icon name="chart" size="sm" class="text-primary-500" />
-            <span class="text-sm font-medium text-gray-700 dark:text-dark-200">{{
-              t('home.tags.realtimeBilling')
-            }}</span>
+
+          <div class="grid gap-5 lg:grid-cols-3">
+            <article
+              v-for="plan in pricingPlans"
+              :key="plan.id"
+              :class="[
+                'relative flex min-h-[360px] flex-col rounded-2xl border bg-white/80 p-6 shadow-sm backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 dark:bg-dark-800/80',
+                plan.featured
+                  ? 'border-primary-300 shadow-primary-500/15 ring-1 ring-primary-300/70 dark:border-primary-700 dark:ring-primary-700/80'
+                  : 'border-gray-200/70 hover:shadow-xl hover:shadow-gray-900/5 dark:border-dark-700/70'
+              ]"
+            >
+              <div
+                v-if="plan.featured"
+                class="absolute right-5 top-5 inline-flex items-center gap-1.5 rounded-full bg-primary-500 px-3 py-1 text-xs font-semibold text-white shadow-sm"
+              >
+                <Icon name="badge" size="xs" :stroke-width="2" />
+                {{ t('home.pricing.recommended') }}
+              </div>
+
+              <div class="mb-6 pr-24">
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white">
+                  {{ t(plan.nameKey) }}
+                </h3>
+                <p class="mt-2 text-sm leading-6 text-gray-500 dark:text-dark-300">
+                  {{ t(plan.subtitleKey) }}
+                </p>
+              </div>
+
+              <div class="mb-6 flex items-end gap-2">
+                <span class="text-4xl font-bold tracking-normal text-gray-900 dark:text-white">
+                  ¥{{ plan.price }}
+                </span>
+                <span class="pb-1 text-sm font-medium text-gray-500 dark:text-dark-300">
+                  {{ t('home.pricing.month') }}
+                </span>
+              </div>
+
+              <ul class="mb-7 flex flex-1 flex-col gap-3">
+                <li
+                  v-for="featureKey in plan.featureKeys"
+                  :key="featureKey"
+                  class="flex items-start gap-2.5 text-sm leading-6 text-gray-600 dark:text-dark-300"
+                >
+                  <Icon
+                    name="checkCircle"
+                    size="sm"
+                    class="mt-1 shrink-0 text-primary-500"
+                    :stroke-width="2"
+                  />
+                  <span>{{ t(featureKey) }}</span>
+                </li>
+              </ul>
+
+              <router-link
+                :to="isAuthenticated ? dashboardPath : '/login'"
+                :class="[
+                  'mt-auto inline-flex h-11 items-center justify-center rounded-lg px-4 text-sm font-semibold transition-colors',
+                  plan.featured
+                    ? 'bg-primary-600 text-white shadow-lg shadow-primary-500/20 hover:bg-primary-500'
+                    : 'border border-gray-200 bg-white text-gray-900 hover:bg-gray-50 dark:border-dark-700 dark:bg-dark-900 dark:text-white dark:hover:bg-dark-700'
+                ]"
+              >
+                {{ t('home.pricing.cta') }}
+              </router-link>
+            </article>
           </div>
-        </div>
+
+          <p class="mt-5 text-center text-sm leading-6 text-gray-500 dark:text-dark-400">
+            {{ t('home.pricing.note') }}
+          </p>
+        </section>
 
         <!-- Features Grid -->
         <div class="mb-12 grid gap-6 md:grid-cols-3">
@@ -440,6 +573,27 @@ const { t, locale } = useI18n()
 const authStore = useAuthStore()
 const appStore = useAppStore()
 
+type DesktopPlatformId = 'mac' | 'windows' | 'linux'
+type PricingPlanId = 'pro' | 'plus' | 'ultra'
+
+interface DesktopPlatform {
+  id: DesktopPlatformId
+  badge: string
+  titleKey: string
+  descriptionKey: string
+  iconClass: string
+  downloadUrl: string
+}
+
+interface PricingPlan {
+  id: PricingPlanId
+  price: string
+  nameKey: string
+  subtitleKey: string
+  featureKeys: string[]
+  featured: boolean
+}
+
 const defaultSiteName = 'Entrox Studio'
 const defaultSiteSubtitle =
   '连接顶级模型与 Entrox Desktop / CLI，把模型接入、项目会话、Agent 工作流和长程编码任务统一到一个可控的桌面体验'
@@ -476,6 +630,70 @@ const installMethods = computed(() => getEntroxInstallMethods(isCnInstallLocale(
 const activeInstallMethodConfig = computed(
   () => installMethods.value.find((method) => method.id === activeInstallMethod.value) || installMethods.value[0]
 )
+const desktopPlatforms: DesktopPlatform[] = [
+  {
+    id: 'mac',
+    badge: 'Mac',
+    titleKey: 'home.desktop.platforms.mac.title',
+    descriptionKey: 'home.desktop.platforms.mac.description',
+    iconClass: 'bg-gradient-to-br from-gray-900 to-gray-700 shadow-gray-900/20',
+    downloadUrl: ''
+  },
+  {
+    id: 'windows',
+    badge: 'Win',
+    titleKey: 'home.desktop.platforms.windows.title',
+    descriptionKey: 'home.desktop.platforms.windows.description',
+    iconClass: 'bg-gradient-to-br from-blue-500 to-cyan-500 shadow-blue-500/25',
+    downloadUrl: ''
+  },
+  {
+    id: 'linux',
+    badge: 'Linux',
+    titleKey: 'home.desktop.platforms.linux.title',
+    descriptionKey: 'home.desktop.platforms.linux.description',
+    iconClass: 'bg-gradient-to-br from-orange-500 to-amber-500 shadow-orange-500/25',
+    downloadUrl: ''
+  }
+]
+const pricingPlans: PricingPlan[] = [
+  {
+    id: 'pro',
+    price: '59',
+    nameKey: 'home.pricing.plans.pro.name',
+    subtitleKey: 'home.pricing.plans.pro.subtitle',
+    featureKeys: [
+      'home.pricing.plans.pro.usage',
+      'home.pricing.plans.pro.concurrency',
+      'home.pricing.plans.pro.queue'
+    ],
+    featured: false
+  },
+  {
+    id: 'plus',
+    price: '159',
+    nameKey: 'home.pricing.plans.plus.name',
+    subtitleKey: 'home.pricing.plans.plus.subtitle',
+    featureKeys: [
+      'home.pricing.plans.plus.usage',
+      'home.pricing.plans.plus.concurrency',
+      'home.pricing.plans.plus.queue'
+    ],
+    featured: true
+  },
+  {
+    id: 'ultra',
+    price: '399',
+    nameKey: 'home.pricing.plans.ultra.name',
+    subtitleKey: 'home.pricing.plans.ultra.subtitle',
+    featureKeys: [
+      'home.pricing.plans.ultra.usage',
+      'home.pricing.plans.ultra.concurrency',
+      'home.pricing.plans.ultra.queue'
+    ],
+    featured: false
+  }
+]
 
 // Check if homeContent is a URL (for iframe display)
 const isHomeContentUrl = computed(() => {
@@ -539,11 +757,13 @@ onMounted(() => {
 .terminal-container {
   position: relative;
   display: inline-block;
+  width: min(420px, 100%);
+  max-width: 100%;
 }
 
 /* Terminal Window */
 .terminal-window {
-  width: 420px;
+  width: 100%;
   background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
   border-radius: 14px;
   box-shadow:

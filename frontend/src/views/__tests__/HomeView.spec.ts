@@ -19,9 +19,40 @@ const messages: Record<string, string> = {
   'home.install.title': 'Install Entrox CLI',
   'home.install.homebrew': 'Homebrew',
   'home.install.scoop': 'Scoop',
-  'home.tags.subscriptionToApi': 'Subscription to API',
-  'home.tags.stickySession': 'Sticky session',
-  'home.tags.realtimeBilling': 'Realtime billing',
+  'home.desktop.badge': 'Desktop Client',
+  'home.desktop.title': 'Entrox Desktop',
+  'home.desktop.description':
+    'A desktop AI coding workspace. Sign in with Entrox to sync models and certificates.',
+  'home.desktop.download': 'Download',
+  'home.desktop.downloadPending': 'Download URL coming soon',
+  'home.desktop.platforms.mac.title': 'macOS Client',
+  'home.desktop.platforms.mac.description': 'For Apple Silicon and Intel Mac',
+  'home.desktop.platforms.windows.title': 'Windows Client',
+  'home.desktop.platforms.windows.description': 'For Windows 10/11 desktop environments',
+  'home.desktop.platforms.linux.title': 'Linux Client',
+  'home.desktop.platforms.linux.description': 'For mainstream AppImage distributions',
+  'home.pricing.badge': 'Personal subscriptions',
+  'home.pricing.title': 'Choose your Entrox plan',
+  'home.pricing.description': 'Plans include Entrox Desktop, Entrox CLI, gateway access, and monthly model usage.',
+  'home.pricing.recommended': 'Recommended',
+  'home.pricing.month': '/ month',
+  'home.pricing.cta': 'Subscribe',
+  'home.pricing.note': 'Monthly usage resets each billing cycle. Personal use only.',
+  'home.pricing.plans.pro.name': 'PRO',
+  'home.pricing.plans.pro.subtitle': 'For light personal coding',
+  'home.pricing.plans.pro.usage': '1x monthly usage included',
+  'home.pricing.plans.pro.concurrency': '1 concurrent agent task',
+  'home.pricing.plans.pro.queue': 'Standard queue',
+  'home.pricing.plans.plus.name': 'PLUS',
+  'home.pricing.plans.plus.subtitle': 'For daily AI coding work',
+  'home.pricing.plans.plus.usage': '3.5x monthly usage included',
+  'home.pricing.plans.plus.concurrency': '3 concurrent agent tasks',
+  'home.pricing.plans.plus.queue': 'Priority queue',
+  'home.pricing.plans.ultra.name': 'Ultra',
+  'home.pricing.plans.ultra.subtitle': 'For heavy agent workflows',
+  'home.pricing.plans.ultra.usage': '10x monthly usage included',
+  'home.pricing.plans.ultra.concurrency': '6-8 concurrent agent tasks',
+  'home.pricing.plans.ultra.queue': 'Highest priority queue',
   'home.features.unifiedGateway': 'Unified Gateway',
   'home.features.unifiedGatewayDesc': 'Unified gateway description',
   'home.features.multiAccount': 'Account Pool',
@@ -106,7 +137,7 @@ describe('HomeView', () => {
     expect(terminal.text()).not.toContain('/v1/messages')
   })
 
-  it('shows Entrox CLI install commands on the home hero', async () => {
+  it('shows Homebrew Entrox CLI install commands on the home hero', async () => {
     const wrapper = mount(HomeView, {
       global: {
         stubs: {
@@ -127,9 +158,6 @@ describe('HomeView', () => {
 
     const homebrewTab = wrapper.findAll('button').find((button) => button.text() === 'Homebrew')
     expect(homebrewTab).toBeDefined()
-    await homebrewTab!.trigger('click')
-    expect(wrapper.text()).toContain('brew tap hexonal/entrox')
-    expect(wrapper.text()).toContain('brew install entrox')
 
     const scoopTab = wrapper.findAll('button').find((button) => button.text() === 'Scoop')
     expect(scoopTab).toBeDefined()
@@ -157,5 +185,72 @@ describe('HomeView', () => {
     expect(wrapper.text()).toContain('export HTTPS_PROXY')
     expect(wrapper.text()).toContain('你的代理端口')
     expect(wrapper.text()).not.toContain('127.0.0.1:7890')
+  })
+
+  it('shows Entrox Desktop download cards with pending download buttons', () => {
+    const wrapper = mount(HomeView, {
+      global: {
+        stubs: {
+          LocaleSwitcher: true,
+          Icon: true,
+          RouterLink: {
+            template: '<a><slot /></a>',
+          },
+        },
+      },
+    })
+
+    expect(wrapper.text()).toContain('Entrox Desktop')
+    expect(wrapper.text()).toContain('A desktop AI coding workspace. Sign in with Entrox to sync models and certificates.')
+    expect(wrapper.text()).toContain('macOS Client')
+    expect(wrapper.text()).toContain('Windows Client')
+    expect(wrapper.text()).toContain('Linux Client')
+
+    const downloadButtons = wrapper.findAll('button[disabled]').filter((button) => button.text() === 'Download')
+    expect(downloadButtons).toHaveLength(3)
+    expect(downloadButtons.every((button) => button.attributes('title') === 'Download URL coming soon')).toBe(true)
+  })
+
+  it('shows approved personal subscription pricing tiers', () => {
+    const wrapper = mount(HomeView, {
+      global: {
+        stubs: {
+          LocaleSwitcher: true,
+          Icon: true,
+          RouterLink: {
+            template: '<a><slot /></a>',
+          },
+        },
+      },
+    })
+
+    expect(wrapper.text()).toContain('Personal subscriptions')
+    expect(wrapper.text()).toContain('Choose your Entrox plan')
+    expect(wrapper.text()).toContain('PRO')
+    expect(wrapper.text()).toContain('¥59')
+    expect(wrapper.text()).toContain('PLUS')
+    expect(wrapper.text()).toContain('¥159')
+    expect(wrapper.text()).toContain('Ultra')
+    expect(wrapper.text()).toContain('¥399')
+    expect(wrapper.text()).toContain('Recommended')
+    expect(wrapper.text()).toContain('Monthly usage resets each billing cycle. Personal use only.')
+  })
+
+  it('does not show the legacy feature tag row above pricing', () => {
+    const wrapper = mount(HomeView, {
+      global: {
+        stubs: {
+          LocaleSwitcher: true,
+          Icon: true,
+          RouterLink: {
+            template: '<a><slot /></a>',
+          },
+        },
+      },
+    })
+
+    expect(wrapper.text()).not.toContain('Subscription to API')
+    expect(wrapper.text()).not.toContain('Sticky session')
+    expect(wrapper.text()).not.toContain('Monthly quota')
   })
 })

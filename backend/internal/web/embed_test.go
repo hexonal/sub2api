@@ -141,6 +141,10 @@ func TestReplaceNoncePlaceholder(t *testing.T) {
 	})
 }
 
+func TestShouldBypassEmbeddedFrontendForInstallScript(t *testing.T) {
+	assert.True(t, shouldBypassEmbeddedFrontend("/install"))
+}
+
 func TestNonceHTMLPlaceholder(t *testing.T) {
 	t.Run("constant_value", func(t *testing.T) {
 		assert.Equal(t, "__CSP_NONCE_VALUE__", NonceHTMLPlaceholder)

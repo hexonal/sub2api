@@ -18,10 +18,59 @@ export default {
       homebrew: 'Homebrew',
       scoop: 'Scoop'
     },
-    tags: {
-      subscriptionToApi: 'Subscription to API',
-      stickySession: 'Session Persistence',
-      realtimeBilling: 'Pay As You Go'
+    desktop: {
+      badge: 'Desktop Client',
+      title: 'Entrox Desktop',
+      description:
+        'A desktop AI coding workspace. Sign in with Entrox to sync models and certificates, then manage project sessions, model switching, prompt queues, and MCP tools in one place.',
+      download: 'Download',
+      downloadPending: 'Download URL coming soon',
+      platforms: {
+        mac: {
+          title: 'macOS Client',
+          description: 'For Apple Silicon and Intel Mac'
+        },
+        windows: {
+          title: 'Windows Client',
+          description: 'For Windows 10/11 desktop environments'
+        },
+        linux: {
+          title: 'Linux Client',
+          description: 'For mainstream AppImage distributions'
+        }
+      }
+    },
+    pricing: {
+      badge: 'Personal subscriptions',
+      title: 'Choose your Entrox plan',
+      description: 'Plans include Entrox Desktop, Entrox CLI, gateway access, and monthly model usage.',
+      recommended: 'Recommended',
+      month: '/ month',
+      cta: 'Subscribe',
+      note: 'Monthly usage resets each billing cycle. Personal use only.',
+      plans: {
+        pro: {
+          name: 'PRO',
+          subtitle: 'For light personal coding',
+          usage: '1x monthly usage included',
+          concurrency: '1 concurrent agent task',
+          queue: 'Standard queue'
+        },
+        plus: {
+          name: 'PLUS',
+          subtitle: 'For daily AI coding work',
+          usage: '3.5x monthly usage included',
+          concurrency: '3 concurrent agent tasks',
+          queue: 'Priority queue'
+        },
+        ultra: {
+          name: 'Ultra',
+          subtitle: 'For heavy agent workflows',
+          usage: '10x monthly usage included',
+          concurrency: '6-8 concurrent agent tasks',
+          queue: 'Highest priority queue'
+        }
+      }
     },
     // Pain points section
     painPoints: {
@@ -55,8 +104,8 @@ export default {
       unifiedGatewayDesc: 'Get a single API key to call all connected AI models. No separate applications needed.',
       multiAccount: 'Always Reliable',
       multiAccountDesc: 'Smart routing across multiple upstream accounts with automatic failover. Say goodbye to errors.',
-      balanceQuota: 'Pay What You Use',
-      balanceQuotaDesc: 'Usage-based billing with quota limits. Full visibility into team consumption.'
+      balanceQuota: 'Subscription Usage',
+      balanceQuotaDesc: 'Each plan includes monthly model usage with quota limits and detailed usage visibility.'
     },
     // Comparison section
     comparison: {
@@ -70,7 +119,7 @@ export default {
         pricing: {
           feature: 'Pricing',
           official: 'Fixed monthly fee, pay even if unused',
-          us: 'Pay only for what you use'
+          us: 'Personal plans with clear monthly quotas'
         },
         models: {
           feature: 'Model Selection',

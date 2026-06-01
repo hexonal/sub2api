@@ -1,6 +1,7 @@
 package routes
 
 import (
+	_ "embed"
 	"net/http"
 	"strings"
 
@@ -11,11 +12,19 @@ const sub2APIOpenCodeTokenEnv = "SUB2API_API_KEY"
 const sub2APIOpenCodeProviderID = "entrox"
 const sub2APIOpenCodeDynamicConfigPath = "/api/v1/entrox/opencode/config"
 
+//go:embed entrox_install.sh
+var entroxInstallScript string
+
 // RegisterCommonRoutes 注册通用路由（健康检查、状态等）
 func RegisterCommonRoutes(r *gin.Engine) {
 	// 健康检查
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
+
+	r.GET("/install", func(c *gin.Context) {
+		c.Header("Cache-Control", "no-cache")
+		c.Data(http.StatusOK, "text/x-shellscript; charset=utf-8", []byte(entroxInstallScript))
 	})
 
 	r.GET("/.well-known/opencode", func(c *gin.Context) {

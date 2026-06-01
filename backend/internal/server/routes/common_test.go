@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -76,5 +77,32 @@ func TestRegisterCommonRoutesWellKnownOpenCode(t *testing.T) {
 	}
 	if headers["Authorization"] != "Bearer {env:"+sub2APIOpenCodeTokenEnv+"}" {
 		t.Fatalf("expected auth header env substitution, got %#v", headers["Authorization"])
+	}
+}
+
+func TestRegisterCommonRoutesEntroxInstallRedirect(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	router := gin.New()
+	RegisterCommonRoutes(router)
+
+	req := httptest.NewRequest(http.MethodGet, "/install", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+	contentType := rec.Header().Get("Content-Type")
+	if contentType != "text/x-shellscript; charset=utf-8" {
+		t.Fatalf("expected shell script content type, got %q", contentType)
+	}
+	body := rec.Body.String()
+	if len(body) == 0 || body[:19] != "#!/usr/bin/env bash" {
+		t.Fatalf("expected bash installer, got %q", body)
+	}
+	if !strings.Contains(body, "APP=entrox") {
+		t.Fatalf("expected Entrox installer, got %q", body)
 	}
 }

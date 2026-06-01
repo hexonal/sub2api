@@ -128,9 +128,9 @@ describe('UseKeyModal', () => {
 
     expect(wrapper.text()).toContain('keys.useKeyModal.opencode.loginTitle')
     expect(wrapper.text()).toContain('keys.useKeyModal.opencode.installTitle')
-    expect(codeBlocks[0]).not.toContain('curl -fsSL https://entrox.996icu.wiki/install | bash')
     expect(codeBlocks[0]).toContain('brew tap hexonal/entrox')
     expect(codeBlocks[0]).toContain('brew install entrox')
+    expect(codeBlocks[0]).not.toContain('curl -fsSL https://entrox.996icu.wiki/install | bash')
     expect(codeBlocks[0]).toContain('scoop bucket add entrox https://github.com/hexonal/scoop-entrox')
     expect(codeBlocks[0]).toContain('scoop install entrox')
     expect(codeBlocks[1]).toBe('entrox login')

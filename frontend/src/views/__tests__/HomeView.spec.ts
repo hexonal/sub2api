@@ -157,7 +157,7 @@ describe('HomeView', () => {
     expect(wrapper.text()).toContain('git -C "$ENTROX_HOMEBREW_TAP" reset --hard origin/main')
     expect(wrapper.text()).toContain('HOMEBREW_NO_AUTO_UPDATE=1 brew tap hexonal/entrox')
     expect(wrapper.text()).toContain('HOMEBREW_NO_AUTO_UPDATE=1 brew trust hexonal/entrox')
-    expect(wrapper.text()).toContain('HOMEBREW_NO_AUTO_UPDATE=1 brew install hexonal/entrox/entrox')
+    expect(wrapper.text()).toContain('HOMEBREW_NO_AUTO_UPDATE=1 brew upgrade hexonal/entrox/entrox || HOMEBREW_NO_AUTO_UPDATE=1 brew install hexonal/entrox/entrox')
 
     const homebrewTab = wrapper.findAll('button').find((button) => button.text() === 'Homebrew')
     expect(homebrewTab).toBeDefined()

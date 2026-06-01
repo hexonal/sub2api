@@ -162,11 +162,11 @@ func TestAccountTestService_OpenAIStreamEOFBeforeCompletedFails(t *testing.T) {
 	require.NotContains(t, recorder.Body.String(), `"success":true`)
 }
 
-func TestAccountTestService_ClaudeUpstreamServerErrorHidesBody(t *testing.T) {
+func TestAccountTestService_ClaudeUpstreamServerErrorShowsRawBody(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	ctx, recorder := newTestContext()
 
-	resp := newJSONResponse(http.StatusInternalServerError, `{"type":"error","error":{"message":"Codex token refresh failed: secret upstream detail"}}`)
+	resp := newJSONResponse(http.StatusInternalServerError, `{"type":"error","error":{"message":"Codex token refresh failed: Error: Unable to connect. Is the computer able to access the url?"}}`)
 
 	upstream := &queuedHTTPUpstream{responses: []*http.Response{resp}}
 	svc := &AccountTestService{
@@ -190,10 +190,10 @@ func TestAccountTestService_ClaudeUpstreamServerErrorHidesBody(t *testing.T) {
 	require.Error(t, err)
 
 	body := recorder.Body.String()
-	require.Contains(t, body, "API returned 500")
-	require.Contains(t, body, "upstream server error")
-	require.NotContains(t, body, "Codex token refresh failed")
-	require.NotContains(t, body, "secret upstream detail")
+	require.Contains(t, body, "API returned 500:")
+	require.Contains(t, body, "Codex token refresh failed")
+	require.Contains(t, body, "Unable to connect")
+	require.Contains(t, body, `{\"type\":\"error\",\"error\":{\"message\":\"Codex token refresh failed`)
 }
 
 func TestAccountTestService_OpenAI429PersistsSnapshotAndRateLimitState(t *testing.T) {

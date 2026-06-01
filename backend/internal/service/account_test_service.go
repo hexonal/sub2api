@@ -115,9 +115,6 @@ func accountTestHTTPErrorMessage(source string, status int, body []byte) string 
 	if source == "" {
 		source = "API"
 	}
-	if status >= http.StatusInternalServerError {
-		return fmt.Sprintf("%s returned %d (upstream server error)", source, status)
-	}
 	trimmed := strings.TrimSpace(string(body))
 	if trimmed == "" {
 		return fmt.Sprintf("%s returned %d", source, status)

@@ -12,15 +12,15 @@ export function isCnInstallLocale(locale: unknown): boolean {
 
 export function getEntroxHomebrewInstallCommand(isCn: boolean): string {
   if (!isCn) {
-    return 'brew tap hexonal/entrox\n(brew trust hexonal/entrox || true)\nHOMEBREW_NO_AUTO_UPDATE=1 brew install hexonal/entrox/entrox'
+    return 'HOMEBREW_NO_AUTO_UPDATE=1 brew tap hexonal/entrox\n(HOMEBREW_NO_AUTO_UPDATE=1 brew trust hexonal/entrox || true)\nHOMEBREW_NO_AUTO_UPDATE=1 brew install hexonal/entrox/entrox'
   }
 
   return `# 中国大陆网络：如 GitHub 连接失败，先按你的本机代理地址修改并执行下面两行
 # export HTTPS_PROXY="http://127.0.0.1:<你的代理端口>"
 # export HTTP_PROXY="$HTTPS_PROXY"
 
-brew tap hexonal/entrox
-(brew trust hexonal/entrox || true)
+HOMEBREW_NO_AUTO_UPDATE=1 brew tap hexonal/entrox
+(HOMEBREW_NO_AUTO_UPDATE=1 brew trust hexonal/entrox || true)
 HOMEBREW_NO_AUTO_UPDATE=1 brew install hexonal/entrox/entrox`
 }
 

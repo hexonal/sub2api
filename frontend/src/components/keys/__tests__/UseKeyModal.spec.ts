@@ -128,8 +128,8 @@ describe('UseKeyModal', () => {
 
     expect(wrapper.text()).toContain('keys.useKeyModal.opencode.loginTitle')
     expect(wrapper.text()).toContain('keys.useKeyModal.opencode.installTitle')
-    expect(codeBlocks[0]).toContain('brew tap hexonal/entrox')
-    expect(codeBlocks[0]).toContain('brew trust hexonal/entrox')
+    expect(codeBlocks[0]).toContain('HOMEBREW_NO_AUTO_UPDATE=1 brew tap hexonal/entrox')
+    expect(codeBlocks[0]).toContain('HOMEBREW_NO_AUTO_UPDATE=1 brew trust hexonal/entrox')
     expect(codeBlocks[0]).toContain('HOMEBREW_NO_AUTO_UPDATE=1 brew install hexonal/entrox/entrox')
     expect(codeBlocks[0]).not.toContain('curl -fsSL https://entrox.996icu.wiki/install | bash')
     expect(codeBlocks[0]).toContain('Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser')

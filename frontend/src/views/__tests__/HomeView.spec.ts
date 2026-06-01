@@ -153,8 +153,8 @@ describe('HomeView', () => {
     expect(wrapper.text()).toContain('Install Entrox CLI')
     expect(wrapper.text()).not.toContain('curl -fsSL https://entrox.996icu.wiki/install | bash')
     expect(wrapper.text()).not.toContain('Script')
-    expect(wrapper.text()).toContain('brew tap hexonal/entrox')
-    expect(wrapper.text()).toContain('brew trust hexonal/entrox')
+    expect(wrapper.text()).toContain('HOMEBREW_NO_AUTO_UPDATE=1 brew tap hexonal/entrox')
+    expect(wrapper.text()).toContain('HOMEBREW_NO_AUTO_UPDATE=1 brew trust hexonal/entrox')
     expect(wrapper.text()).toContain('HOMEBREW_NO_AUTO_UPDATE=1 brew install hexonal/entrox/entrox')
 
     const homebrewTab = wrapper.findAll('button').find((button) => button.text() === 'Homebrew')

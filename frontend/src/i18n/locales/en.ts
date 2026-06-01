@@ -752,7 +752,7 @@ export default {
         geminiCli: 'Gemini CLI',
         codexCli: 'Codex CLI',
         codexCliWs: 'Codex CLI (WebSocket)',
-        opencode: 'OpenCode',
+        opencode: 'Entrox CLI',
       },
       antigravity: {
         description: 'Configure API access for Antigravity group. Select the configuration method based on your client.',
@@ -767,9 +767,9 @@ export default {
         note: 'These environment variables will be active in the current terminal session. For permanent configuration, add them to ~/.bashrc, ~/.zshrc, or the appropriate configuration file.',
       },
       opencode: {
-        title: 'OpenCode Example',
-        subtitle: 'opencode.json',
-        hint: 'Config path: ~/.config/opencode/opencode.json (or opencode.jsonc), create if not exists. Use default providers (openai/anthropic/google) or custom provider_id. API Key can be configured directly or via /connect command. This is an example, adjust models and options as needed.',
+        title: 'Entrox CLI Login',
+        subtitle: 'Terminal',
+        hint: 'Run the command in terminal. Browser authorization will complete entrox CLI login automatically.',
       },
     },
     customKeyLabel: 'Custom Key',

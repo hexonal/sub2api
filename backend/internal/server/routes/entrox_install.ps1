@@ -12,14 +12,31 @@ if (-not [Environment]::Is64BitOperatingSystem) {
 }
 
 if ($Version) {
-  $DownloadBaseUrl = "https://github.com/hexonal/entrox/releases/download/v$Version"
+  if ($Version -like "0.0.0-ci.*") {
+    $DownloadBaseUrl = "$DownloadBaseUrl/$Version"
+  } else {
+    $DownloadBaseUrl = "https://github.com/hexonal/entrox/releases/download/v$Version"
+  }
   $DisplayVersion = "v$Version"
 } else {
-  $DisplayVersion = "latest dev build"
+  $ManifestUrl = "$DownloadBaseUrl/latest.json"
+  Write-Host "Resolving latest Entrox release"
+  $Manifest = Invoke-RestMethod -UseBasicParsing -Uri $ManifestUrl
+  $DisplayVersion = $Manifest.version
 }
 
 $Asset = "entrox-cli-windows-x64.zip"
-$Url = "$DownloadBaseUrl/$Asset"
+if ($Version) {
+  $Url = "$DownloadBaseUrl/$Asset"
+  $ExpectedHash = ""
+} else {
+  $AssetInfo = $Manifest.assets | Where-Object { $_.name -eq $Asset } | Select-Object -First 1
+  if (-not $AssetInfo -or -not $AssetInfo.url) {
+    throw "Latest Entrox manifest did not include $Asset."
+  }
+  $Url = $AssetInfo.url
+  $ExpectedHash = $AssetInfo.sha256
+}
 $TempDir = Join-Path ([IO.Path]::GetTempPath()) ("entrox_install_" + [Guid]::NewGuid().ToString("N"))
 $Archive = Join-Path $TempDir $Asset
 
@@ -29,6 +46,12 @@ try {
   Write-Host "Installing Entrox $DisplayVersion for windows-x64"
   Write-Host "Downloading $Asset"
   Invoke-WebRequest -UseBasicParsing -Uri $Url -OutFile $Archive
+  if ($ExpectedHash) {
+    $ActualHash = (Get-FileHash -Algorithm SHA256 -Path $Archive).Hash.ToLowerInvariant()
+    if ($ActualHash -ne $ExpectedHash.ToLowerInvariant()) {
+      throw "SHA-256 verification failed for $Asset. Expected $ExpectedHash, actual $ActualHash."
+    }
+  }
   Expand-Archive -Path $Archive -DestinationPath $TempDir -Force
 
   $Candidates = @(

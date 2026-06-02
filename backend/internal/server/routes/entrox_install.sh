@@ -29,7 +29,7 @@ Options:
       --no-modify-path    Do not update shell profile files
 
 Environment:
-  ENTROX_DOWNLOAD_BASE_URL  Download mirror base URL. Defaults to ${DEFAULT_INSTALL_BASE_URL}/downloads/entrox-dev
+  ENTROX_DOWNLOAD_BASE_URL  Download manifest base URL. Defaults to ${DEFAULT_INSTALL_BASE_URL}/downloads/entrox-dev
   ENTROX_INSTALL_DIR        Install directory. Defaults to ~/.entrox/bin
 
 Examples:
@@ -63,13 +63,6 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-require_command() {
-  if ! command -v "$1" >/dev/null 2>&1; then
-    red "Error: '$1' is required but not installed."
-    exit 1
-  fi
-}
-
 extract_zip() {
   local archive=$1
   local output=$2
@@ -91,7 +84,105 @@ extract_zip() {
   exit 1
 }
 
-require_command curl
+download_file() {
+  local url=$1
+  local output=$2
+
+  if command -v curl >/dev/null 2>&1; then
+    curl -fL --progress-bar -o "$output" "$url"
+    return
+  fi
+
+  if command -v wget >/dev/null 2>&1; then
+    wget -O "$output" "$url"
+    return
+  fi
+
+  red "Error: 'curl' or 'wget' is required to download Entrox."
+  red "Ubuntu/Debian: sudo apt-get update && sudo apt-get install -y curl"
+  red "CentOS/RHEL:   sudo yum install -y curl"
+  red "Alpine:       apk add --no-cache curl"
+  red "macOS:        install Xcode Command Line Tools or Homebrew curl"
+  exit 1
+}
+
+json_string_value() {
+  local file=$1
+  local key=$2
+
+  if command -v python3 >/dev/null 2>&1; then
+    python3 - "$file" "$key" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as file:
+    value = json.load(file).get(sys.argv[2], "")
+print(value, end="")
+PY
+    return
+  fi
+
+  sed -n "s/.*\"$key\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" "$file" | head -n 1
+}
+
+json_asset_field() {
+  local file=$1
+  local asset=$2
+  local field=$3
+
+  if command -v python3 >/dev/null 2>&1; then
+    python3 - "$file" "$asset" "$field" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as file:
+    manifest = json.load(file)
+for item in manifest.get("assets", []):
+    if item.get("name") == sys.argv[2]:
+        print(item.get(sys.argv[3], ""), end="")
+        break
+PY
+    return
+  fi
+
+  awk -v asset="$asset" -v field="$field" '
+    $0 ~ "\"name\"[[:space:]]*:[[:space:]]*\"" asset "\"" { in_asset = 1 }
+    in_asset && $0 ~ "\"" field "\"[[:space:]]*:" {
+      line = $0
+      sub(".*\"" field "\"[[:space:]]*:[[:space:]]*\"", "", line)
+      sub("\".*", "", line)
+      print line
+      exit
+    }
+    in_asset && $0 ~ /^[[:space:]]*}/ { in_asset = 0 }
+  ' "$file"
+}
+
+verify_sha256() {
+  local file=$1
+  local expected=$2
+  local actual=""
+
+  if [[ -z "$expected" ]]; then
+    return
+  fi
+
+  if command -v shasum >/dev/null 2>&1; then
+    actual=$(shasum -a 256 "$file" | awk '{print $1}')
+  elif command -v sha256sum >/dev/null 2>&1; then
+    actual=$(sha256sum "$file" | awk '{print $1}')
+  else
+    red "Warning: cannot verify SHA-256 because neither 'shasum' nor 'sha256sum' is installed."
+    return
+  fi
+
+  if [[ "$actual" != "$expected" ]]; then
+    red "Error: SHA-256 verification failed for $file"
+    red "Expected: $expected"
+    red "Actual:   $actual"
+    exit 1
+  fi
+}
 
 raw_os=$(uname -s)
 case "$raw_os" in
@@ -139,22 +230,41 @@ case "$os-$arch" in
     ;;
 esac
 
-if [[ -n "$VERSION" ]]; then
-  download_base="https://github.com/hexonal/entrox/releases/download/v${VERSION#v}"
-  display_version="v${VERSION#v}"
-else
-  download_base="${DOWNLOAD_BASE_URL%/}"
-  display_version="latest dev build"
-fi
-
-url="$download_base/$filename"
 tmp_dir="${TMPDIR:-/tmp}/${APP}_install_$$"
 trap 'rm -rf "$tmp_dir"' EXIT
 mkdir -p "$tmp_dir" "$INSTALL_DIR"
 
+url=""
+expected_sha256=""
+display_version=""
+
+if [[ -n "$VERSION" ]]; then
+  display_version="v${VERSION#v}"
+  if [[ "${VERSION#v}" == 0.0.0-ci.* ]]; then
+    url="${DOWNLOAD_BASE_URL%/}/${VERSION#v}/$filename"
+  else
+    url="https://github.com/hexonal/entrox/releases/download/v${VERSION#v}/$filename"
+  fi
+else
+  manifest="$tmp_dir/latest.json"
+  manifest_url="${DOWNLOAD_BASE_URL%/}/latest.json"
+  info "Resolving latest Entrox release"
+  download_file "$manifest_url" "$manifest"
+
+  display_version=$(json_string_value "$manifest" "version")
+  url=$(json_asset_field "$manifest" "$filename" "url")
+  expected_sha256=$(json_asset_field "$manifest" "$filename" "sha256")
+
+  if [[ -z "$display_version" || -z "$url" ]]; then
+    red "Error: latest Entrox manifest did not include $filename."
+    exit 1
+  fi
+fi
+
 info "Installing Entrox $display_version for $os-$arch"
 info "Downloading $filename"
-curl -fL --progress-bar -o "$tmp_dir/$filename" "$url"
+download_file "$url" "$tmp_dir/$filename"
+verify_sha256 "$tmp_dir/$filename" "$expected_sha256"
 
 extract_zip "$tmp_dir/$filename" "$tmp_dir"
 

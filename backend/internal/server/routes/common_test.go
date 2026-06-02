@@ -121,6 +121,15 @@ func TestRegisterCommonRoutesEntroxInstallRedirect(t *testing.T) {
 	if !strings.Contains(body, `DOWNLOAD_BASE_URL=${ENTROX_DOWNLOAD_BASE_URL:-"${INSTALL_BASE_URL%/}/downloads/entrox-dev"}`) {
 		t.Fatalf("expected installer to default through service download route, got %q", body)
 	}
+	if strings.Contains(body, "require_command curl") {
+		t.Fatalf("expected installer to support curl/wget fallback")
+	}
+	if !strings.Contains(body, `manifest_url="${DOWNLOAD_BASE_URL%/}/latest.json"`) {
+		t.Fatalf("expected installer to resolve latest manifest before downloading, got %q", body)
+	}
+	if !strings.Contains(body, "json_asset_field") || !strings.Contains(body, "verify_sha256") {
+		t.Fatalf("expected installer to use manifest asset URLs and verify hashes, got %q", body)
+	}
 }
 
 func TestRegisterCommonRoutesEntroxInstallPowerShell(t *testing.T) {
@@ -150,6 +159,12 @@ func TestRegisterCommonRoutesEntroxInstallPowerShell(t *testing.T) {
 	}
 	if !strings.Contains(body, `"$InstallBaseUrl/downloads/entrox-dev"`) {
 		t.Fatalf("expected PowerShell installer to default through service download route, got %q", body)
+	}
+	if !strings.Contains(body, "$ManifestUrl = \"$DownloadBaseUrl/latest.json\"") {
+		t.Fatalf("expected PowerShell installer to resolve latest manifest before downloading, got %q", body)
+	}
+	if !strings.Contains(body, "$AssetInfo = $Manifest.assets") || !strings.Contains(body, "Get-FileHash -Algorithm SHA256") {
+		t.Fatalf("expected PowerShell installer to use manifest asset URLs and verify hashes, got %q", body)
 	}
 }
 

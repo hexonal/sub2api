@@ -10,41 +10,18 @@ export function isCnInstallLocale(locale: unknown): boolean {
   return String(locale || '').toLowerCase().startsWith('zh')
 }
 
-export function getEntroxHomebrewInstallCommand(isCn: boolean): string {
-  const installCommand = `# Self-heals a corrupted local tap before installing.
-ENTROX_HOMEBREW_TAP="$(brew --repository)/Library/Taps/hexonal/homebrew-entrox"; if [ -d "$ENTROX_HOMEBREW_TAP/.git" ]; then (git -C "$ENTROX_HOMEBREW_TAP" fetch origin && git -C "$ENTROX_HOMEBREW_TAP" reset --hard origin/main && git -C "$ENTROX_HOMEBREW_TAP" clean -fd) || rm -rf "$ENTROX_HOMEBREW_TAP"; elif [ -d "$ENTROX_HOMEBREW_TAP" ]; then rm -rf "$ENTROX_HOMEBREW_TAP"; fi; HOMEBREW_NO_AUTO_UPDATE=1 brew tap hexonal/entrox; (HOMEBREW_NO_AUTO_UPDATE=1 brew trust hexonal/entrox || true); HOMEBREW_NO_AUTO_UPDATE=1 brew upgrade hexonal/entrox/entrox || HOMEBREW_NO_AUTO_UPDATE=1 brew install hexonal/entrox/entrox`
-
-  if (!isCn) {
-    return installCommand
-  }
-
-  return `# 中国大陆网络：如 GitHub 连接失败，先按你的本机代理地址修改并执行下面两行
-# export HTTPS_PROXY="http://127.0.0.1:<你的代理端口>"
-# export HTTP_PROXY="$HTTPS_PROXY"
-
-${installCommand}`
+export function getEntroxHomebrewInstallCommand(_isCn: boolean): string {
+  return `HOMEBREW_NO_AUTO_UPDATE=1 brew tap hexonal/entrox
+(HOMEBREW_NO_AUTO_UPDATE=1 brew trust hexonal/entrox || true)
+HOMEBREW_NO_AUTO_UPDATE=1 brew install hexonal/entrox/entrox`
 }
 
-export function getEntroxScriptInstallCommand(isCn: boolean): string {
-  const installCommand = 'curl -fsSL https://entrox.996icu.wiki/install | bash'
-
-  if (!isCn) {
-    return installCommand
-  }
-
-  return `# 国内默认走 Entrox 下载入口；服务端可配置 Aliyun OSS/CDN 镜像，无需用户本机配置代理
-${installCommand}`
+export function getEntroxScriptInstallCommand(_isCn: boolean): string {
+  return 'curl -fsSL https://entrox.996icu.wiki/install | bash'
 }
 
-export function getEntroxPowerShellInstallCommand(isCn: boolean): string {
-  const installCommand = 'irm https://entrox.996icu.wiki/install.ps1 | iex'
-
-  if (!isCn) {
-    return installCommand
-  }
-
-  return `# 国内默认走 Entrox 下载入口；无需预装 Scoop
-${installCommand}`
+export function getEntroxPowerShellInstallCommand(_isCn: boolean): string {
+  return 'irm https://entrox.996icu.wiki/install.ps1 | iex'
 }
 
 export function getEntroxScoopInstallCommand(isCn: boolean): string {

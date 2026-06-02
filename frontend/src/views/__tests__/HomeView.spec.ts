@@ -167,11 +167,11 @@ describe('HomeView', () => {
     const homebrewTab = wrapper.findAll('button').find((button) => button.text() === 'Homebrew')
     expect(homebrewTab).toBeDefined()
     await homebrewTab!.trigger('click')
-    expect(wrapper.text()).toContain('ENTROX_HOMEBREW_TAP="$(brew --repository)/Library/Taps/hexonal/homebrew-entrox"')
-    expect(wrapper.text()).toContain('git -C "$ENTROX_HOMEBREW_TAP" reset --hard origin/main')
     expect(wrapper.text()).toContain('HOMEBREW_NO_AUTO_UPDATE=1 brew tap hexonal/entrox')
     expect(wrapper.text()).toContain('HOMEBREW_NO_AUTO_UPDATE=1 brew trust hexonal/entrox')
-    expect(wrapper.text()).toContain('HOMEBREW_NO_AUTO_UPDATE=1 brew upgrade hexonal/entrox/entrox || HOMEBREW_NO_AUTO_UPDATE=1 brew install hexonal/entrox/entrox')
+    expect(wrapper.text()).toContain('HOMEBREW_NO_AUTO_UPDATE=1 brew install hexonal/entrox/entrox')
+    expect(wrapper.text()).not.toContain('ENTROX_HOMEBREW_TAP')
+    expect(wrapper.text()).not.toContain('reset --hard origin/main')
 
     const scoopTab = wrapper.findAll('button').find((button) => button.text() === 'Scoop')
     expect(scoopTab).toBeDefined()
@@ -182,7 +182,7 @@ describe('HomeView', () => {
     expect(wrapper.text()).toContain('scoop install entrox')
   })
 
-  it('adds optional CN network proxy guidance for Chinese locale', async () => {
+  it('keeps official CN install commands concise', async () => {
     localeRef.value = 'zh'
 
     const wrapper = mount(HomeView, {
@@ -197,14 +197,15 @@ describe('HomeView', () => {
       },
     })
 
-    expect(wrapper.text()).toContain('Aliyun OSS/CDN')
     expect(wrapper.text()).toContain('curl -fsSL https://entrox.996icu.wiki/install | bash')
+    expect(wrapper.text()).not.toContain('Aliyun OSS/CDN')
 
     const homebrewTab = wrapper.findAll('button').find((button) => button.text() === 'Homebrew')
     expect(homebrewTab).toBeDefined()
     await homebrewTab!.trigger('click')
-    expect(wrapper.text()).toContain('如 GitHub 连接失败')
-    expect(wrapper.text()).toContain('export HTTPS_PROXY')
+    expect(wrapper.text()).toContain('HOMEBREW_NO_AUTO_UPDATE=1 brew install hexonal/entrox/entrox')
+    expect(wrapper.text()).not.toContain('如 GitHub 连接失败')
+    expect(wrapper.text()).not.toContain('export HTTPS_PROXY')
 
     const scoopTab = wrapper.findAll('button').find((button) => button.text() === 'Scoop')
     expect(scoopTab).toBeDefined()

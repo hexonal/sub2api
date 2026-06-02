@@ -141,8 +141,9 @@ import Icon from '@/components/icons/Icon.vue'
 import { useClipboard } from '@/composables/useClipboard'
 import type { GroupPlatform } from '@/types'
 import {
+  getEntroxHomebrewInstallCommand,
   getEntroxLinuxInstallGuide,
-  getEntroxMacosInstallGuide,
+  getEntroxScriptInstallCommand,
   getEntroxWindowsInstallGuide,
   isCnInstallLocale
 } from '@/utils/entroxInstall'
@@ -594,9 +595,13 @@ function generateEntroxCliFiles(): FileConfig[] {
 
   return [
     {
-      path: `${installTitle} - macOS`,
-      content: getEntroxMacosInstallGuide(isCn),
+      path: `${installTitle} - macOS - curl`,
+      content: getEntroxScriptInstallCommand(isCn),
       hint: t('keys.useKeyModal.opencode.installHint')
+    },
+    {
+      path: `${installTitle} - macOS - Homebrew`,
+      content: getEntroxHomebrewInstallCommand(isCn)
     },
     {
       path: `${installTitle} - Linux`,

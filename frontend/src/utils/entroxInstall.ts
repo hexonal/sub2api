@@ -32,10 +32,14 @@ scoop bucket add entrox https://github.com/hexonal/scoop-entrox
 scoop install entrox`
 }
 
-export function getEntroxMacLinuxInstallGuide(isCn: boolean): string {
+export function getEntroxMacosInstallGuide(isCn: boolean): string {
   return `${getEntroxScriptInstallCommand(isCn)}
 
 ${getEntroxHomebrewInstallCommand(isCn)}`
+}
+
+export function getEntroxLinuxInstallGuide(isCn: boolean): string {
+  return getEntroxScriptInstallCommand(isCn)
 }
 
 export function getEntroxWindowsInstallGuide(isCn: boolean): string {
@@ -70,7 +74,9 @@ export function getEntroxInstallMethods(isCn: boolean): EntroxInstallMethod[] {
 }
 
 export function getEntroxInstallGuide(isCn: boolean): string {
-  return `${getEntroxMacLinuxInstallGuide(isCn)}
+  return `${getEntroxMacosInstallGuide(isCn)}
+
+${getEntroxLinuxInstallGuide(isCn)}
 
 ${getEntroxWindowsInstallGuide(isCn)}`
 }

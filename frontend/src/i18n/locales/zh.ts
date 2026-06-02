@@ -43,13 +43,13 @@ export default {
       }
     },
     pricing: {
-      badge: '个人订阅',
-      title: '选择你的 Entrox 个人版',
-      description: '套餐包含 Entrox Desktop、Entrox CLI、网关接入和每月模型用量额度。',
+      badge: '订阅套餐',
+      title: '选择你的 Entrox 套餐',
+      description: '套餐包含 Entrox Desktop、Entrox CLI、网关接入、每月模型用量额度，也支持团队企业定制。',
       recommended: '推荐',
       month: '/月',
       cta: '订阅',
-      note: '月度用量随订阅周期刷新，仅限个人使用，不包含团队席位或转售场景。',
+      note: '自助订阅的月度用量随订阅周期刷新；企业定制按实际方案单独确认。',
       plans: {
         pro: {
           name: 'PRO',
@@ -71,6 +71,15 @@ export default {
           usage: '10x 月度用量额度',
           concurrency: '6-8 个并发 Agent 任务',
           queue: '最高优先级队列'
+        },
+        enterprise: {
+          name: '企业定制',
+          subtitle: '适合团队与专属部署',
+          price: '按需定制',
+          usage: '定制月度用量池',
+          concurrency: '专属并发与优先容量',
+          support: '部署、培训与合规支持',
+          cta: '联系我们'
         }
       }
     },
@@ -103,7 +112,7 @@ export default {
     },
     features: {
       unifiedGateway: '一键接入',
-      unifiedGatewayDesc: '获取一个 API 密钥，即可调用所有已接入的 AI 模型，无需分别申请。',
+      unifiedGatewayDesc: '获取一个产品证书，即可调用所有已接入的 AI 模型，无需分别申请。',
       multiAccount: '稳定可靠',
       multiAccountDesc: '智能调度多个上游账号，自动切换和负载均衡，告别频繁报错。',
       balanceQuota: '订阅内用量',

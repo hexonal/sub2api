@@ -33,13 +33,13 @@ const messages: Record<string, string> = {
   'home.desktop.platforms.windows.description': 'For Windows 10/11 desktop environments',
   'home.desktop.platforms.linux.title': 'Linux Client',
   'home.desktop.platforms.linux.description': 'For mainstream AppImage distributions',
-  'home.pricing.badge': 'Personal subscriptions',
+  'home.pricing.badge': 'Subscription plans',
   'home.pricing.title': 'Choose your Entrox plan',
   'home.pricing.description': 'Plans include Entrox Desktop, Entrox CLI, gateway access, and monthly model usage.',
   'home.pricing.recommended': 'Recommended',
   'home.pricing.month': '/ month',
   'home.pricing.cta': 'Subscribe',
-  'home.pricing.note': 'Monthly usage resets each billing cycle. Personal use only.',
+  'home.pricing.note': 'Monthly usage resets each billing cycle for self-service plans. Enterprise terms are confirmed separately.',
   'home.pricing.plans.pro.name': 'PRO',
   'home.pricing.plans.pro.subtitle': 'For light personal coding',
   'home.pricing.plans.pro.usage': '1x monthly usage included',
@@ -55,6 +55,13 @@ const messages: Record<string, string> = {
   'home.pricing.plans.ultra.usage': '10x monthly usage included',
   'home.pricing.plans.ultra.concurrency': '6-8 concurrent agent tasks',
   'home.pricing.plans.ultra.queue': 'Highest priority queue',
+  'home.pricing.plans.enterprise.name': 'Enterprise Custom',
+  'home.pricing.plans.enterprise.subtitle': 'For teams and dedicated deployments',
+  'home.pricing.plans.enterprise.price': 'Custom pricing',
+  'home.pricing.plans.enterprise.usage': 'Custom monthly usage pool',
+  'home.pricing.plans.enterprise.concurrency': 'Dedicated concurrency and priority capacity',
+  'home.pricing.plans.enterprise.support': 'Deployment, onboarding, and compliance support',
+  'home.pricing.plans.enterprise.cta': 'Contact us',
   'home.features.unifiedGateway': 'Unified Gateway',
   'home.features.unifiedGatewayDesc': 'Unified gateway description',
   'home.features.multiAccount': 'Account Pool',
@@ -71,6 +78,9 @@ const messages: Record<string, string> = {
   'home.footer.allRightsReserved': 'All rights reserved.',
   'home.docs': 'Docs',
 }
+
+const defaultHeroSubtitle =
+  'Entrox 把模型网关、CLI 与 Desktop 工作台连成一套 AI 编程系统：一键登录同步 Claude/GPT/Gemini 等模型资源，在桌面同时管理多个项目与 Agent 会话，实时查看流式输出、排队提示词、切换模型/后端并接入 MCP 工具；在终端用 entrox 快速启动同一套能力，让日常改动、自动化任务和长程编码都保持连续、清晰、可控。'
 
 vi.mock('vue-i18n', async () => {
   const actual = await vi.importActual<typeof import('vue-i18n')>('vue-i18n')
@@ -131,6 +141,7 @@ describe('HomeView', () => {
     const terminal = wrapper.find('.terminal-body')
     const commandLine = wrapper.findAll('.line-1 span').map((span) => span.text())
 
+    expect(wrapper.text()).toContain(defaultHeroSubtitle)
     expect(commandLine).toEqual(['$', 'entrox', 'login'])
     expect(terminal.text()).toContain('Opening browser authorization')
     expect(terminal.text()).toContain('SIGNED IN')
@@ -239,7 +250,7 @@ describe('HomeView', () => {
     expect(downloadButtons.every((button) => button.attributes('title') === 'Download URL coming soon')).toBe(true)
   })
 
-  it('shows approved personal subscription pricing tiers', () => {
+  it('shows approved subscription pricing tiers with enterprise custom option', () => {
     const wrapper = mount(HomeView, {
       global: {
         stubs: {
@@ -252,7 +263,7 @@ describe('HomeView', () => {
       },
     })
 
-    expect(wrapper.text()).toContain('Personal subscriptions')
+    expect(wrapper.text()).toContain('Subscription plans')
     expect(wrapper.text()).toContain('Choose your Entrox plan')
     expect(wrapper.text()).toContain('PRO')
     expect(wrapper.text()).toContain('¥59')
@@ -260,8 +271,19 @@ describe('HomeView', () => {
     expect(wrapper.text()).toContain('¥159')
     expect(wrapper.text()).toContain('Ultra')
     expect(wrapper.text()).toContain('¥399')
+    expect(wrapper.text()).toContain('Enterprise Custom')
+    expect(wrapper.text()).toContain('Custom pricing')
+    expect(wrapper.text()).toContain('Custom monthly usage pool')
+    expect(wrapper.text()).toContain('Dedicated concurrency and priority capacity')
+    expect(wrapper.text()).toContain('Deployment, onboarding, and compliance support')
+    expect(wrapper.text()).toContain('Contact us')
+    const enterpriseContactLink = wrapper.find('a[href="mailto:ailun@matchtrio.com"]')
+    expect(enterpriseContactLink.exists()).toBe(true)
+    expect(enterpriseContactLink.text()).toBe('Contact us')
     expect(wrapper.text()).toContain('Recommended')
-    expect(wrapper.text()).toContain('Monthly usage resets each billing cycle. Personal use only.')
+    expect(wrapper.text()).toContain(
+      'Monthly usage resets each billing cycle for self-service plans. Enterprise terms are confirmed separately.'
+    )
   })
 
   it('does not show the legacy feature tag row above pricing', () => {

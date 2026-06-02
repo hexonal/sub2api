@@ -303,7 +303,7 @@
             </p>
           </div>
 
-          <div class="grid gap-5 lg:grid-cols-3">
+          <div class="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
             <article
               v-for="plan in pricingPlans"
               :key="plan.id"
@@ -332,10 +332,22 @@
               </div>
 
               <div class="mb-6 flex items-end gap-2">
-                <span class="text-4xl font-bold tracking-normal text-gray-900 dark:text-white">
+                <span
+                  v-if="plan.price"
+                  class="text-4xl font-bold tracking-normal text-gray-900 dark:text-white"
+                >
                   ¥{{ plan.price }}
                 </span>
-                <span class="pb-1 text-sm font-medium text-gray-500 dark:text-dark-300">
+                <span
+                  v-else
+                  class="text-3xl font-bold tracking-normal text-gray-900 dark:text-white"
+                >
+                  {{ t(plan.priceLabelKey) }}
+                </span>
+                <span
+                  v-if="plan.price"
+                  class="pb-1 text-sm font-medium text-gray-500 dark:text-dark-300"
+                >
                   {{ t('home.pricing.month') }}
                 </span>
               </div>
@@ -356,16 +368,19 @@
                 </li>
               </ul>
 
-              <router-link
-                :to="isAuthenticated ? dashboardPath : '/login'"
-                :class="[
-                  'mt-auto inline-flex h-11 items-center justify-center rounded-lg px-4 text-sm font-semibold transition-colors',
-                  plan.featured
-                    ? 'bg-primary-600 text-white shadow-lg shadow-primary-500/20 hover:bg-primary-500'
-                    : 'border border-gray-200 bg-white text-gray-900 hover:bg-gray-50 dark:border-dark-700 dark:bg-dark-900 dark:text-white dark:hover:bg-dark-700'
-                ]"
+              <a
+                v-if="plan.ctaHref"
+                :href="plan.ctaHref"
+                :class="pricingPlanCtaClass(plan.featured)"
               >
-                {{ t('home.pricing.cta') }}
+                {{ t(plan.ctaKey) }}
+              </a>
+              <router-link
+                v-else
+                :to="isAuthenticated ? dashboardPath : '/login'"
+                :class="pricingPlanCtaClass(plan.featured)"
+              >
+                {{ t(plan.ctaKey) }}
               </router-link>
             </article>
           </div>
@@ -574,7 +589,7 @@ const authStore = useAuthStore()
 const appStore = useAppStore()
 
 type DesktopPlatformId = 'mac' | 'windows' | 'linux'
-type PricingPlanId = 'pro' | 'plus' | 'ultra'
+type PricingPlanId = 'pro' | 'plus' | 'ultra' | 'enterprise'
 
 interface DesktopPlatform {
   id: DesktopPlatformId
@@ -588,15 +603,18 @@ interface DesktopPlatform {
 interface PricingPlan {
   id: PricingPlanId
   price: string
+  priceLabelKey: string
   nameKey: string
   subtitleKey: string
   featureKeys: string[]
+  ctaKey: string
+  ctaHref?: string
   featured: boolean
 }
 
 const defaultSiteName = 'Entrox Studio'
 const defaultSiteSubtitle =
-  '连接顶级模型与 Entrox Desktop / CLI，把模型接入、项目会话、Agent 工作流和长程编码任务统一到一个可控的桌面体验'
+  'Entrox 把模型网关、CLI 与 Desktop 工作台连成一套 AI 编程系统：一键登录同步 Claude/GPT/Gemini 等模型资源，在桌面同时管理多个项目与 Agent 会话，实时查看流式输出、排队提示词、切换模型/后端并接入 MCP 工具；在终端用 entrox 快速启动同一套能力，让日常改动、自动化任务和长程编码都保持连续、清晰、可控。'
 
 const normalizeEntroxBranding = (value: string | undefined, fallback: string) => {
   const trimmed = value?.trim()
@@ -660,6 +678,7 @@ const pricingPlans: PricingPlan[] = [
   {
     id: 'pro',
     price: '59',
+    priceLabelKey: '',
     nameKey: 'home.pricing.plans.pro.name',
     subtitleKey: 'home.pricing.plans.pro.subtitle',
     featureKeys: [
@@ -667,11 +686,13 @@ const pricingPlans: PricingPlan[] = [
       'home.pricing.plans.pro.concurrency',
       'home.pricing.plans.pro.queue'
     ],
+    ctaKey: 'home.pricing.cta',
     featured: false
   },
   {
     id: 'plus',
     price: '159',
+    priceLabelKey: '',
     nameKey: 'home.pricing.plans.plus.name',
     subtitleKey: 'home.pricing.plans.plus.subtitle',
     featureKeys: [
@@ -679,11 +700,13 @@ const pricingPlans: PricingPlan[] = [
       'home.pricing.plans.plus.concurrency',
       'home.pricing.plans.plus.queue'
     ],
+    ctaKey: 'home.pricing.cta',
     featured: true
   },
   {
     id: 'ultra',
     price: '399',
+    priceLabelKey: '',
     nameKey: 'home.pricing.plans.ultra.name',
     subtitleKey: 'home.pricing.plans.ultra.subtitle',
     featureKeys: [
@@ -691,8 +714,31 @@ const pricingPlans: PricingPlan[] = [
       'home.pricing.plans.ultra.concurrency',
       'home.pricing.plans.ultra.queue'
     ],
+    ctaKey: 'home.pricing.cta',
+    featured: false
+  },
+  {
+    id: 'enterprise',
+    price: '',
+    priceLabelKey: 'home.pricing.plans.enterprise.price',
+    nameKey: 'home.pricing.plans.enterprise.name',
+    subtitleKey: 'home.pricing.plans.enterprise.subtitle',
+    featureKeys: [
+      'home.pricing.plans.enterprise.usage',
+      'home.pricing.plans.enterprise.concurrency',
+      'home.pricing.plans.enterprise.support'
+    ],
+    ctaKey: 'home.pricing.plans.enterprise.cta',
+    ctaHref: 'mailto:ailun@matchtrio.com',
     featured: false
   }
+]
+
+const pricingPlanCtaClass = (featured: boolean) => [
+  'mt-auto inline-flex h-11 items-center justify-center rounded-lg px-4 text-sm font-semibold transition-colors',
+  featured
+    ? 'bg-primary-600 text-white shadow-lg shadow-primary-500/20 hover:bg-primary-500'
+    : 'border border-gray-200 bg-white text-gray-900 hover:bg-gray-50 dark:border-dark-700 dark:bg-dark-900 dark:text-white dark:hover:bg-dark-700'
 ]
 
 // Check if homeContent is a URL (for iframe display)

@@ -43,13 +43,15 @@ export default {
       }
     },
     pricing: {
-      badge: 'Personal subscriptions',
+      badge: 'Subscription plans',
       title: 'Choose your Entrox plan',
-      description: 'Plans include Entrox Desktop, Entrox CLI, gateway access, and monthly model usage.',
+      description:
+        'Plans include Entrox Desktop, Entrox CLI, gateway access, monthly model usage, and enterprise options for teams.',
       recommended: 'Recommended',
       month: '/ month',
       cta: 'Subscribe',
-      note: 'Monthly usage resets each billing cycle. Personal use only.',
+      note:
+        'Monthly usage resets each billing cycle for self-service plans. Enterprise terms are confirmed separately.',
       plans: {
         pro: {
           name: 'PRO',
@@ -71,6 +73,15 @@ export default {
           usage: '10x monthly usage included',
           concurrency: '6-8 concurrent agent tasks',
           queue: 'Highest priority queue'
+        },
+        enterprise: {
+          name: 'Enterprise Custom',
+          subtitle: 'For teams and dedicated deployments',
+          price: 'Custom pricing',
+          usage: 'Custom monthly usage pool',
+          concurrency: 'Dedicated concurrency and priority capacity',
+          support: 'Deployment, onboarding, and compliance support',
+          cta: 'Contact us'
         }
       }
     },

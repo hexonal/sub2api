@@ -84,26 +84,18 @@ extract_zip() {
   exit 1
 }
 
+require_command() {
+  if ! command -v "$1" >/dev/null 2>&1; then
+    red "Error: '$1' is required but not installed."
+    exit 1
+  fi
+}
+
 download_file() {
   local url=$1
   local output=$2
 
-  if command -v curl >/dev/null 2>&1; then
-    curl -fL --progress-bar -o "$output" "$url"
-    return
-  fi
-
-  if command -v wget >/dev/null 2>&1; then
-    wget -O "$output" "$url"
-    return
-  fi
-
-  red "Error: 'curl' or 'wget' is required to download Entrox."
-  red "Ubuntu/Debian: sudo apt-get update && sudo apt-get install -y curl"
-  red "CentOS/RHEL:   sudo yum install -y curl"
-  red "Alpine:       apk add --no-cache curl"
-  red "macOS:        install Xcode Command Line Tools or Homebrew curl"
-  exit 1
+  curl -fL --progress-bar -o "$output" "$url"
 }
 
 json_string_value() {
@@ -183,6 +175,8 @@ verify_sha256() {
     exit 1
   fi
 }
+
+require_command curl
 
 raw_os=$(uname -s)
 case "$raw_os" in

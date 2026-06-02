@@ -221,8 +221,9 @@ describe('HomeView', () => {
     const scoopTab = wrapper.findAll('button').find((button) => button.text() === 'Scoop')
     expect(scoopTab).toBeDefined()
     await scoopTab!.trigger('click')
-    expect(wrapper.text()).toContain('scoop config proxy')
-    expect(wrapper.text()).toContain('你的代理端口')
+    expect(wrapper.text()).toContain('scoop install entrox')
+    expect(wrapper.text()).not.toContain('scoop config proxy')
+    expect(wrapper.text()).not.toContain('你的代理端口')
     expect(wrapper.text()).not.toContain('127.0.0.1:7890')
   })
 

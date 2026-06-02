@@ -140,7 +140,11 @@ import BaseDialog from '@/components/common/BaseDialog.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { useClipboard } from '@/composables/useClipboard'
 import type { GroupPlatform } from '@/types'
-import { getEntroxInstallGuide, isCnInstallLocale } from '@/utils/entroxInstall'
+import {
+  getEntroxMacLinuxInstallGuide,
+  getEntroxWindowsInstallGuide,
+  isCnInstallLocale
+} from '@/utils/entroxInstall'
 
 interface Props {
   show: boolean
@@ -584,11 +588,18 @@ goals = true`
 }
 
 function generateEntroxCliFiles(): FileConfig[] {
+  const isCn = isCnInstallLocale(locale.value)
+  const installTitle = t('keys.useKeyModal.opencode.installTitle')
+
   return [
     {
-      path: t('keys.useKeyModal.opencode.installTitle'),
-      content: getEntroxInstallGuide(isCnInstallLocale(locale.value)),
+      path: `${installTitle} - macOS / Linux`,
+      content: getEntroxMacLinuxInstallGuide(isCn),
       hint: t('keys.useKeyModal.opencode.installHint')
+    },
+    {
+      path: `${installTitle} - Windows`,
+      content: getEntroxWindowsInstallGuide(isCn)
     },
     {
       path: t('keys.useKeyModal.opencode.loginTitle'),

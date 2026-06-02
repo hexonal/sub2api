@@ -38,7 +38,7 @@ export default {
         },
         linux: {
           title: 'Linux 客户端',
-          description: '适用于主流发行版的 AppImage'
+          description: '适用于 Debian/Ubuntu 发行版'
         }
       }
     },

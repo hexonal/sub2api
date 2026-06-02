@@ -38,7 +38,7 @@ export default {
         },
         linux: {
           title: 'Linux Client',
-          description: 'For mainstream AppImage distributions'
+          description: 'For Debian/Ubuntu distributions'
         }
       }
     },

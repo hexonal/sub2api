@@ -32,7 +32,7 @@ const messages: Record<string, string> = {
   'home.desktop.platforms.windows.title': 'Windows Client',
   'home.desktop.platforms.windows.description': 'For Windows 10/11 desktop environments',
   'home.desktop.platforms.linux.title': 'Linux Client',
-  'home.desktop.platforms.linux.description': 'For mainstream AppImage distributions',
+  'home.desktop.platforms.linux.description': 'For Debian/Ubuntu distributions',
   'home.pricing.badge': 'Subscription plans',
   'home.pricing.title': 'Choose your Entrox plan',
   'home.pricing.description': 'Plans include Entrox Desktop, Entrox CLI, gateway access, and monthly model usage.',
@@ -227,7 +227,7 @@ describe('HomeView', () => {
     expect(wrapper.text()).not.toContain('127.0.0.1:7890')
   })
 
-  it('shows Entrox Desktop download cards with pending download buttons', () => {
+  it('shows Entrox Desktop download cards with configured download links', () => {
     const wrapper = mount(HomeView, {
       global: {
         stubs: {
@@ -246,9 +246,14 @@ describe('HomeView', () => {
     expect(wrapper.text()).toContain('Windows Client')
     expect(wrapper.text()).toContain('Linux Client')
 
-    const downloadButtons = wrapper.findAll('button[disabled]').filter((button) => button.text() === 'Download')
-    expect(downloadButtons).toHaveLength(3)
-    expect(downloadButtons.every((button) => button.attributes('title') === 'Download URL coming soon')).toBe(true)
+    const downloadLinks = wrapper.findAll('a[href*="entrox-desktop-0.5.14"]')
+    expect(downloadLinks).toHaveLength(3)
+    expect(downloadLinks.map((link) => link.attributes('href'))).toEqual([
+      'https://entrox-download.996icu.wiki/entrox-desktop/entrox-desktop-0.5.14.dmg',
+      'https://entrox-download.996icu.wiki/entrox-desktop/entrox-desktop-0.5.14.exe',
+      'https://entrox-download.996icu.wiki/entrox-desktop/entrox-desktop-0.5.14.deb',
+    ])
+    expect(wrapper.findAll('button[disabled]').filter((button) => button.text() === 'Download')).toHaveLength(0)
   })
 
   it('shows approved subscription pricing tiers with enterprise custom option', () => {

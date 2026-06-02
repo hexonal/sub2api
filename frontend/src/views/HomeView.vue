@@ -648,6 +648,7 @@ const installMethods = computed(() => getEntroxInstallMethods(isCnInstallLocale(
 const activeInstallMethodConfig = computed(
   () => installMethods.value.find((method) => method.id === activeInstallMethod.value) || installMethods.value[0]
 )
+const desktopDownloadBaseUrl = 'https://entrox-download.996icu.wiki/entrox-desktop'
 const desktopPlatforms: DesktopPlatform[] = [
   {
     id: 'mac',
@@ -655,7 +656,7 @@ const desktopPlatforms: DesktopPlatform[] = [
     titleKey: 'home.desktop.platforms.mac.title',
     descriptionKey: 'home.desktop.platforms.mac.description',
     iconClass: 'bg-gradient-to-br from-gray-900 to-gray-700 shadow-gray-900/20',
-    downloadUrl: ''
+    downloadUrl: `${desktopDownloadBaseUrl}/entrox-desktop-0.5.14.dmg`
   },
   {
     id: 'windows',
@@ -663,7 +664,7 @@ const desktopPlatforms: DesktopPlatform[] = [
     titleKey: 'home.desktop.platforms.windows.title',
     descriptionKey: 'home.desktop.platforms.windows.description',
     iconClass: 'bg-gradient-to-br from-blue-500 to-cyan-500 shadow-blue-500/25',
-    downloadUrl: ''
+    downloadUrl: `${desktopDownloadBaseUrl}/entrox-desktop-0.5.14.exe`
   },
   {
     id: 'linux',
@@ -671,7 +672,7 @@ const desktopPlatforms: DesktopPlatform[] = [
     titleKey: 'home.desktop.platforms.linux.title',
     descriptionKey: 'home.desktop.platforms.linux.description',
     iconClass: 'bg-gradient-to-br from-orange-500 to-amber-500 shadow-orange-500/25',
-    downloadUrl: ''
+    downloadUrl: `${desktopDownloadBaseUrl}/entrox-desktop-0.5.14.deb`
   }
 ]
 const pricingPlans: PricingPlan[] = [

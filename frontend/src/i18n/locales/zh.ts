@@ -28,9 +28,13 @@ export default {
       download: '下载',
       downloadPending: '下载地址待配置',
       platforms: {
-        mac: {
-          title: 'macOS 客户端',
-          description: '适用于 Apple Silicon 和 Intel Mac'
+        macArm: {
+          title: 'macOS Apple Silicon',
+          description: '适用于 M 系列芯片 Mac'
+        },
+        macIntel: {
+          title: 'macOS Intel',
+          description: '适用于 Intel Mac'
         },
         windows: {
           title: 'Windows 客户端',

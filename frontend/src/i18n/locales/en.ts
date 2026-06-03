@@ -28,9 +28,13 @@ export default {
       download: 'Download',
       downloadPending: 'Download URL coming soon',
       platforms: {
-        mac: {
-          title: 'macOS Client',
-          description: 'For Apple Silicon and Intel Mac'
+        macArm: {
+          title: 'macOS Apple Silicon',
+          description: 'For M-series Mac'
+        },
+        macIntel: {
+          title: 'macOS Intel',
+          description: 'For Intel Mac'
         },
         windows: {
           title: 'Windows Client',

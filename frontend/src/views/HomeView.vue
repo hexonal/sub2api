@@ -241,7 +241,7 @@
               </div>
             </div>
 
-            <div class="grid gap-4 p-5 sm:p-8 md:grid-cols-3">
+            <div class="grid gap-4 p-5 sm:p-8 md:grid-cols-2 xl:grid-cols-4">
               <article
                 v-for="platform in desktopPlatforms"
                 :key="platform.id"
@@ -588,7 +588,7 @@ const { t, locale } = useI18n()
 const authStore = useAuthStore()
 const appStore = useAppStore()
 
-type DesktopPlatformId = 'mac' | 'windows' | 'linux'
+type DesktopPlatformId = 'mac-arm' | 'mac-intel' | 'windows' | 'linux'
 type PricingPlanId = 'pro' | 'plus' | 'ultra' | 'enterprise'
 
 interface DesktopPlatform {
@@ -651,12 +651,20 @@ const activeInstallMethodConfig = computed(
 const desktopDownloadBaseUrl = 'https://entrox-download.996icu.wiki/entrox-desktop'
 const desktopPlatforms: DesktopPlatform[] = [
   {
-    id: 'mac',
-    badge: 'Mac',
-    titleKey: 'home.desktop.platforms.mac.title',
-    descriptionKey: 'home.desktop.platforms.mac.description',
+    id: 'mac-arm',
+    badge: 'M',
+    titleKey: 'home.desktop.platforms.macArm.title',
+    descriptionKey: 'home.desktop.platforms.macArm.description',
     iconClass: 'bg-gradient-to-br from-gray-900 to-gray-700 shadow-gray-900/20',
-    downloadUrl: `${desktopDownloadBaseUrl}/entrox-desktop-0.5.14.dmg`
+    downloadUrl: `${desktopDownloadBaseUrl}/entrox-desktop-mac-arm64.dmg`
+  },
+  {
+    id: 'mac-intel',
+    badge: 'Intel',
+    titleKey: 'home.desktop.platforms.macIntel.title',
+    descriptionKey: 'home.desktop.platforms.macIntel.description',
+    iconClass: 'bg-gradient-to-br from-slate-700 to-slate-500 shadow-slate-700/20',
+    downloadUrl: `${desktopDownloadBaseUrl}/entrox-desktop-mac-x64.dmg`
   },
   {
     id: 'windows',

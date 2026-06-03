@@ -27,8 +27,10 @@ const messages: Record<string, string> = {
     'A desktop AI coding workspace. Sign in with Entrox to sync models and certificates.',
   'home.desktop.download': 'Download',
   'home.desktop.downloadPending': 'Download URL coming soon',
-  'home.desktop.platforms.mac.title': 'macOS Client',
-  'home.desktop.platforms.mac.description': 'For Apple Silicon and Intel Mac',
+  'home.desktop.platforms.macArm.title': 'macOS Apple Silicon',
+  'home.desktop.platforms.macArm.description': 'For M-series Mac',
+  'home.desktop.platforms.macIntel.title': 'macOS Intel',
+  'home.desktop.platforms.macIntel.description': 'For Intel Mac',
   'home.desktop.platforms.windows.title': 'Windows Client',
   'home.desktop.platforms.windows.description': 'For Windows 10/11 desktop environments',
   'home.desktop.platforms.linux.title': 'Linux Client',
@@ -242,14 +244,16 @@ describe('HomeView', () => {
 
     expect(wrapper.text()).toContain('Entrox Desktop')
     expect(wrapper.text()).toContain('A desktop AI coding workspace. Sign in with Entrox to sync models and certificates.')
-    expect(wrapper.text()).toContain('macOS Client')
+    expect(wrapper.text()).toContain('macOS Apple Silicon')
+    expect(wrapper.text()).toContain('macOS Intel')
     expect(wrapper.text()).toContain('Windows Client')
     expect(wrapper.text()).toContain('Linux Client')
 
-    const downloadLinks = wrapper.findAll('a[href*="entrox-desktop-0.5.14"]')
-    expect(downloadLinks).toHaveLength(3)
+    const downloadLinks = wrapper.findAll('a[href*="entrox-desktop"]')
+    expect(downloadLinks).toHaveLength(4)
     expect(downloadLinks.map((link) => link.attributes('href'))).toEqual([
-      'https://entrox-download.996icu.wiki/entrox-desktop/entrox-desktop-0.5.14.dmg',
+      'https://entrox-download.996icu.wiki/entrox-desktop/entrox-desktop-mac-arm64.dmg',
+      'https://entrox-download.996icu.wiki/entrox-desktop/entrox-desktop-mac-x64.dmg',
       'https://entrox-download.996icu.wiki/entrox-desktop/entrox-desktop-0.5.14.exe',
       'https://entrox-download.996icu.wiki/entrox-desktop/entrox-desktop-0.5.14.deb',
     ])

@@ -1,4 +1,6 @@
 export type EntroxInstallMethodId = 'script' | 'powershell' | 'homebrew' | 'scoop'
+export type EntroxClientPlatform = 'windows' | 'macos' | 'linux' | 'unknown'
+export type EntroxInstallPlatformTab = 'macos' | 'linux' | 'windows'
 
 export interface EntroxInstallMethod {
   id: EntroxInstallMethodId
@@ -6,8 +8,43 @@ export interface EntroxInstallMethod {
   command: string
 }
 
+interface EntroxClientPlatformInput {
+  platform?: string
+  userAgent?: string
+}
+
 export function isCnInstallLocale(locale: unknown): boolean {
   return String(locale || '').toLowerCase().startsWith('zh')
+}
+
+export function detectEntroxClientPlatform(input?: EntroxClientPlatformInput): EntroxClientPlatform {
+  const platform = input
+    ? input.platform ?? ''
+    : typeof navigator === 'undefined'
+      ? ''
+      : navigator.platform
+  const userAgent = input
+    ? input.userAgent ?? ''
+    : typeof navigator === 'undefined'
+      ? ''
+      : navigator.userAgent
+  const value = `${platform} ${userAgent}`.toLowerCase()
+
+  if (value.includes('win')) return 'windows'
+  if (value.includes('mac')) return 'macos'
+  if (value.includes('linux') || value.includes('x11')) return 'linux'
+  return 'unknown'
+}
+
+export function getDefaultEntroxInstallMethod(input?: EntroxClientPlatformInput): EntroxInstallMethodId {
+  return detectEntroxClientPlatform(input) === 'windows' ? 'powershell' : 'script'
+}
+
+export function getDefaultEntroxInstallPlatformTab(input?: EntroxClientPlatformInput): EntroxInstallPlatformTab {
+  const platform = detectEntroxClientPlatform(input)
+  if (platform === 'windows') return 'windows'
+  if (platform === 'linux') return 'linux'
+  return 'macos'
 }
 
 export function getEntroxHomebrewInstallCommand(_isCn: boolean): string {

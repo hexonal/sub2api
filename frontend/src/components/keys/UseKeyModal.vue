@@ -141,10 +141,11 @@ import Icon from '@/components/icons/Icon.vue'
 import { useClipboard } from '@/composables/useClipboard'
 import type { GroupPlatform } from '@/types'
 import {
+  getDefaultEntroxInstallPlatformTab,
   getEntroxHomebrewInstallCommand,
-  getEntroxLinuxInstallGuide,
+  getEntroxPowerShellInstallCommand,
+  getEntroxScoopInstallCommand,
   getEntroxScriptInstallCommand,
-  getEntroxWindowsInstallGuide,
   isCnInstallLocale
 } from '@/utils/entroxInstall'
 
@@ -183,6 +184,11 @@ const copiedIndex = ref<number | null>(null)
 const activeTab = ref<string>('unix')
 const activeClientTab = ref<string>('claude')
 
+const defaultShellTab = (clientTab: string) => {
+  if (clientTab === 'opencode') return getDefaultEntroxInstallPlatformTab()
+  return 'unix'
+}
+
 // Reset tabs when platform changes
 const defaultClientTab = computed(() => {
   switch (props.platform) {
@@ -200,13 +206,13 @@ const defaultClientTab = computed(() => {
 })
 
 watch(() => props.platform, () => {
-  activeTab.value = 'unix'
   activeClientTab.value = defaultClientTab.value
+  activeTab.value = defaultShellTab(activeClientTab.value)
 }, { immediate: true })
 
 // Reset shell tab when client changes
 watch(activeClientTab, () => {
-  activeTab.value = 'unix'
+  activeTab.value = defaultShellTab(activeClientTab.value)
 })
 
 // Icon components
@@ -318,15 +324,23 @@ const openaiTabs: TabConfig[] = [
   { id: 'windows', label: 'Windows', icon: WindowsIcon }
 ]
 
-const showShellTabs = computed(() => activeClientTab.value !== 'opencode')
+const entroxInstallTabs: TabConfig[] = [
+  { id: 'macos', label: 'macOS', icon: AppleIcon },
+  { id: 'linux', label: 'Linux', icon: TerminalIcon },
+  { id: 'windows', label: 'Windows', icon: WindowsIcon }
+]
 
 const currentTabs = computed(() => {
-  if (!showShellTabs.value) return []
+  if (activeClientTab.value === 'opencode') {
+    return entroxInstallTabs
+  }
   if (activeClientTab.value === 'codex' || activeClientTab.value === 'codex-ws') {
     return openaiTabs
   }
   return shellTabs
 })
+
+const showShellTabs = computed(() => currentTabs.value.length > 0)
 
 const platformDescription = computed(() => {
   switch (props.platform) {
@@ -592,6 +606,37 @@ goals = true`
 function generateEntroxCliFiles(): FileConfig[] {
   const isCn = isCnInstallLocale(locale.value)
   const installTitle = t('keys.useKeyModal.opencode.installTitle')
+  const loginFile = {
+    path: t('keys.useKeyModal.opencode.loginTitle'),
+    content: 'entrox login',
+    hint: t('keys.useKeyModal.opencode.hint')
+  }
+
+  if (activeTab.value === 'windows') {
+    return [
+      {
+        path: `${installTitle} - Windows - PowerShell`,
+        content: getEntroxPowerShellInstallCommand(isCn),
+        hint: t('keys.useKeyModal.opencode.installHint')
+      },
+      {
+        path: `${installTitle} - Windows - Scoop`,
+        content: getEntroxScoopInstallCommand(isCn)
+      },
+      loginFile
+    ]
+  }
+
+  if (activeTab.value === 'linux') {
+    return [
+      {
+        path: `${installTitle} - Linux`,
+        content: getEntroxScriptInstallCommand(isCn),
+        hint: t('keys.useKeyModal.opencode.installHint')
+      },
+      loginFile
+    ]
+  }
 
   return [
     {
@@ -603,19 +648,7 @@ function generateEntroxCliFiles(): FileConfig[] {
       path: `${installTitle} - macOS - Homebrew`,
       content: getEntroxHomebrewInstallCommand(isCn)
     },
-    {
-      path: `${installTitle} - Linux`,
-      content: getEntroxLinuxInstallGuide(isCn)
-    },
-    {
-      path: `${installTitle} - Windows`,
-      content: getEntroxWindowsInstallGuide(isCn)
-    },
-    {
-      path: t('keys.useKeyModal.opencode.loginTitle'),
-      content: 'entrox login',
-      hint: t('keys.useKeyModal.opencode.hint')
-    }
+    loginFile
   ]
 }
 

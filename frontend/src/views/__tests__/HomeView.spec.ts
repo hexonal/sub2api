@@ -166,11 +166,12 @@ describe('HomeView', () => {
     })
 
     expect(wrapper.text()).toContain('Install Entrox CLI')
-    expect(wrapper.text()).toContain('curl -fsSL https://entrox.996icu.wiki/install | bash')
     expect(wrapper.text()).not.toContain('Script')
 
     const scriptTab = wrapper.findAll('button').find((button) => button.text() === 'macOS / Linux')
     expect(scriptTab).toBeDefined()
+    await scriptTab!.trigger('click')
+    expect(wrapper.text()).toContain('curl -fsSL https://entrox.996icu.wiki/install | bash')
 
     const powerShellTab = wrapper.findAll('button').find((button) => button.text() === 'Windows')
     expect(powerShellTab).toBeDefined()
@@ -210,6 +211,9 @@ describe('HomeView', () => {
       },
     })
 
+    const scriptTab = wrapper.findAll('button').find((button) => button.text() === 'macOS / Linux')
+    expect(scriptTab).toBeDefined()
+    await scriptTab!.trigger('click')
     expect(wrapper.text()).toContain('curl -fsSL https://entrox.996icu.wiki/install | bash')
     expect(wrapper.text()).not.toContain('Aliyun OSS/CDN')
 

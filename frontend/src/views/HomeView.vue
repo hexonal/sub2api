@@ -581,7 +581,12 @@ import { useI18n } from 'vue-i18n'
 import { useAuthStore, useAppStore } from '@/stores'
 import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
 import Icon from '@/components/icons/Icon.vue'
-import { getEntroxInstallMethods, isCnInstallLocale, type EntroxInstallMethodId } from '@/utils/entroxInstall'
+import {
+  getDefaultEntroxInstallMethod,
+  getEntroxInstallMethods,
+  isCnInstallLocale,
+  type EntroxInstallMethodId
+} from '@/utils/entroxInstall'
 
 const { t, locale } = useI18n()
 
@@ -643,7 +648,7 @@ const siteSubtitle = computed(() =>
 const docUrl = computed(() => appStore.cachedPublicSettings?.doc_url || appStore.docUrl || '')
 const homeContent = computed(() => appStore.cachedPublicSettings?.home_content || '')
 
-const activeInstallMethod = ref<EntroxInstallMethodId>('script')
+const activeInstallMethod = ref<EntroxInstallMethodId>(getDefaultEntroxInstallMethod())
 const installMethods = computed(() => getEntroxInstallMethods(isCnInstallLocale(locale.value)))
 const activeInstallMethodConfig = computed(
   () => installMethods.value.find((method) => method.id === activeInstallMethod.value) || installMethods.value[0]

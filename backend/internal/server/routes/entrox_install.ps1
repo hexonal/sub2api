@@ -11,6 +11,10 @@ if (-not [Environment]::Is64BitOperatingSystem) {
   throw "Entrox Windows installer currently supports Windows x64 only."
 }
 
+Write-Host "Detected platform: Windows x64 -> windows-x64"
+Write-Host "Install directory: $InstallDir"
+Write-Host "Download base: $DownloadBaseUrl"
+
 if ($Version) {
   if ($Version -like "0.0.0-ci.*") {
     $DownloadBaseUrl = "$DownloadBaseUrl/$Version"
@@ -44,6 +48,8 @@ New-Item -ItemType Directory -Force -Path $TempDir, $InstallDir | Out-Null
 
 try {
   Write-Host "Installing Entrox $DisplayVersion for windows-x64"
+  Write-Host "Selected asset: $Asset"
+  Write-Host "Download URL: $Url"
   Write-Host "Downloading $Asset"
   Invoke-WebRequest -UseBasicParsing -Uri $Url -OutFile $Archive
   if ($ExpectedHash) {

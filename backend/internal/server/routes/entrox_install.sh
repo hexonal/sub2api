@@ -189,7 +189,8 @@ case "$raw_os" in
     ;;
 esac
 
-arch=$(uname -m)
+raw_arch=$(uname -m)
+arch=$raw_arch
 case "$arch" in
   x86_64|amd64) arch=x64 ;;
   arm64|aarch64) arch=arm64 ;;
@@ -202,18 +203,20 @@ esac
 if [[ "$os" == "darwin" && "$arch" == "x64" ]]; then
   rosetta_flag=$(sysctl -n sysctl.proc_translated 2>/dev/null || echo 0)
   if [[ "$rosetta_flag" == "1" ]]; then
+    info "Detected Rosetta translation; using the Apple Silicon macOS asset."
     arch=arm64
   fi
 fi
 
+info "Detected platform: $raw_os / $raw_arch -> $os-$arch"
+info "Install directory: $INSTALL_DIR"
+info "Download base: ${DOWNLOAD_BASE_URL%/}"
+
 case "$os-$arch" in
   darwin-arm64) filename="entrox-cli-macos-arm64.zip" ;;
+  darwin-x64) filename="entrox-cli-macos-x64.zip" ;;
   linux-x64) filename="entrox-cli-linux-x64.zip" ;;
   windows-x64) filename="entrox-cli-windows-x64.zip" ;;
-  darwin-x64)
-    red "Intel macOS builds are not available yet. Use Apple Silicon macOS, Linux x64, or Windows x64."
-    exit 1
-    ;;
   linux-arm64)
     red "Linux arm64 builds are not available yet. Use Linux x64."
     exit 1
@@ -256,6 +259,8 @@ else
 fi
 
 info "Installing Entrox $display_version for $os-$arch"
+info "Selected asset: $filename"
+info "Download URL: $url"
 info "Downloading $filename"
 download_file "$url" "$tmp_dir/$filename"
 verify_sha256 "$tmp_dir/$filename" "$expected_sha256"

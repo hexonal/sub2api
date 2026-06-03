@@ -124,6 +124,12 @@ func TestRegisterCommonRoutesEntroxInstallRedirect(t *testing.T) {
 	if !strings.Contains(body, "require_command curl") {
 		t.Fatalf("expected installer to require curl, got %q", body)
 	}
+	if !strings.Contains(body, "Detected platform:") || !strings.Contains(body, "Selected asset:") {
+		t.Fatalf("expected installer to show platform and asset logs, got %q", body)
+	}
+	if !strings.Contains(body, `darwin-x64) filename="entrox-cli-macos-x64.zip"`) {
+		t.Fatalf("expected installer to support Intel macOS asset, got %q", body)
+	}
 	if !strings.Contains(body, `manifest_url="${DOWNLOAD_BASE_URL%/}/latest.json"`) {
 		t.Fatalf("expected installer to resolve latest manifest before downloading, got %q", body)
 	}
@@ -162,6 +168,9 @@ func TestRegisterCommonRoutesEntroxInstallPowerShell(t *testing.T) {
 	}
 	if !strings.Contains(body, "$ManifestUrl = \"$DownloadBaseUrl/latest.json\"") {
 		t.Fatalf("expected PowerShell installer to resolve latest manifest before downloading, got %q", body)
+	}
+	if !strings.Contains(body, "Detected platform:") || !strings.Contains(body, "Selected asset:") {
+		t.Fatalf("expected PowerShell installer to show platform and asset logs, got %q", body)
 	}
 	if !strings.Contains(body, "$AssetInfo = $Manifest.assets") || !strings.Contains(body, "Get-FileHash -Algorithm SHA256") {
 		t.Fatalf("expected PowerShell installer to use manifest asset URLs and verify hashes, got %q", body)
@@ -248,6 +257,7 @@ func TestIsEntroxDevReleaseAsset(t *testing.T) {
 		"latest.json",
 		"SHA256SUMS",
 		"entrox-cli-macos-arm64.zip",
+		"entrox-cli-macos-x64.zip",
 		"entrox-cli-linux-x64.zip",
 		"entrox-cli-windows-x64.zip",
 	} {

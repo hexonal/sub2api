@@ -29,9 +29,14 @@ func (s *updateServiceCacheStub) SetUpdateInfo(_ context.Context, data string, _
 
 type updateServiceGitHubClientStub struct {
 	release *GitHubRelease
+	calls   int
 }
 
 func (s *updateServiceGitHubClientStub) FetchLatestRelease(context.Context, string) (*GitHubRelease, error) {
+	s.calls++
+	if s.release == nil {
+		return nil, errors.New("missing release")
+	}
 	return s.release, nil
 }
 
@@ -61,4 +66,29 @@ func TestUpdateServicePerformUpdateNoUpdateReturnsSentinel(t *testing.T) {
 	require.Error(t, err)
 	require.True(t, errors.Is(err, ErrNoUpdateAvailable))
 	require.ErrorIs(t, err, ErrNoUpdateAvailable)
+}
+
+func TestUpdateServiceCheckUpdateRenderManagedDeploySkipsReleaseCheck(t *testing.T) {
+	t.Setenv(renderEnvName, "true")
+
+	cache := &updateServiceCacheStub{
+		data: `{"latest":"9.9.9","timestamp":4102444800}`,
+	}
+	client := &updateServiceGitHubClientStub{
+		release: &GitHubRelease{
+			TagName: "v9.9.9",
+			Name:    "v9.9.9",
+		},
+	}
+	svc := NewUpdateService(cache, client, "0.1.133", "release")
+
+	info, err := svc.CheckUpdate(context.Background(), false)
+
+	require.NoError(t, err)
+	require.Equal(t, "0.1.133", info.CurrentVersion)
+	require.Equal(t, "0.1.133", info.LatestVersion)
+	require.False(t, info.HasUpdate)
+	require.Equal(t, "release", info.BuildType)
+	require.Contains(t, info.Warning, "Render auto deploy")
+	require.Zero(t, client.calls)
 }

@@ -38,6 +38,8 @@ const (
 	maxDownloadSize = 500 * 1024 * 1024
 )
 
+const renderEnvName = "RENDER"
+
 // UpdateCache defines cache operations for update service
 type UpdateCache interface {
 	GetUpdateInfo(ctx context.Context) (string, error)
@@ -114,6 +116,10 @@ type GitHubAsset struct {
 
 // CheckUpdate checks for available updates
 func (s *UpdateService) CheckUpdate(ctx context.Context, force bool) (*UpdateInfo, error) {
+	if s.renderManagedDeploy() {
+		return s.managedDeployInfo(), nil
+	}
+
 	// Try cache first
 	if !force {
 		if cached, err := s.getFromCache(ctx); err == nil && cached != nil {
@@ -141,6 +147,20 @@ func (s *UpdateService) CheckUpdate(ctx context.Context, force bool) (*UpdateInf
 	// Cache result
 	s.saveToCache(ctx, info)
 	return info, nil
+}
+
+func (s *UpdateService) renderManagedDeploy() bool {
+	return strings.EqualFold(strings.TrimSpace(os.Getenv(renderEnvName)), "true")
+}
+
+func (s *UpdateService) managedDeployInfo() *UpdateInfo {
+	return &UpdateInfo{
+		CurrentVersion: s.currentVersion,
+		LatestVersion:  s.currentVersion,
+		HasUpdate:      false,
+		Warning:        "Updates are managed by Render auto deploy.",
+		BuildType:      s.buildType,
+	}
 }
 
 // PerformUpdate downloads and applies the update

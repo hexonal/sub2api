@@ -6,7 +6,9 @@ import (
 	"crypto/tls"
 	"database/sql"
 	"encoding/hex"
+	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -17,7 +19,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/repository"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 
-	_ "github.com/lib/pq"
+	"github.com/lib/pq"
 	"github.com/redis/go-redis/v9"
 	"gopkg.in/yaml.v3"
 )
@@ -171,6 +173,34 @@ func buildDatabaseConnectionDSNs(cfg *DatabaseConfig) (bootstrapDSN, targetDSN s
 	return buildPostgresDSN(cfg, "postgres"), buildPostgresDSN(cfg, cfg.DBName)
 }
 
+func isMissingDatabaseError(err error, dbName string) bool {
+	var pqErr *pq.Error
+	if !errors.As(err, &pqErr) {
+		return false
+	}
+	if string(pqErr.Code) != "3D000" {
+		return false
+	}
+	return strings.Contains(pqErr.Message, fmt.Sprintf("database %q does not exist", dbName))
+}
+
+func pingTargetDatabase(ctx context.Context, cfg *DatabaseConfig, targetDSN string) error {
+	targetDB, err := sql.Open("postgres", targetDSN)
+	if err != nil {
+		return fmt.Errorf("failed to connect to database '%s': %w", cfg.DBName, err)
+	}
+	defer func() {
+		if err := targetDB.Close(); err != nil {
+			logger.LegacyPrintf("setup", "failed to close postgres connection: %v", err)
+		}
+	}()
+
+	if err := targetDB.PingContext(ctx); err != nil {
+		return fmt.Errorf("ping target database failed: %w", err)
+	}
+	return nil
+}
+
 // TestDatabaseConnection tests the database connection and creates database if not exists
 func TestDatabaseConnection(cfg *DatabaseConfig) error {
 	// First, connect to the default 'postgres' database to check/create target database.
@@ -196,6 +226,10 @@ func TestDatabaseConnection(cfg *DatabaseConfig) error {
 	defer cancel()
 
 	if err := db.PingContext(ctx); err != nil {
+		if isMissingDatabaseError(err, "postgres") {
+			logger.LegacyPrintf("setup", "Bootstrap database 'postgres' is unavailable; using configured database '%s' directly", cfg.DBName)
+			return pingTargetDatabase(ctx, cfg, targetDSN)
+		}
 		return fmt.Errorf("ping failed: %w", err)
 	}
 
@@ -224,25 +258,9 @@ func TestDatabaseConnection(cfg *DatabaseConfig) error {
 	}
 	db = nil
 
-	targetDB, err := sql.Open("postgres", targetDSN)
-	if err != nil {
-		return fmt.Errorf("failed to connect to database '%s': %w", cfg.DBName, err)
-	}
-
-	defer func() {
-		if err := targetDB.Close(); err != nil {
-			logger.LegacyPrintf("setup", "failed to close postgres connection: %v", err)
-		}
-	}()
-
 	ctx2, cancel2 := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel2()
-
-	if err := targetDB.PingContext(ctx2); err != nil {
-		return fmt.Errorf("ping target database failed: %w", err)
-	}
-
-	return nil
+	return pingTargetDatabase(ctx2, cfg, targetDSN)
 }
 
 // TestRedisConnection tests the Redis connection
@@ -536,6 +554,69 @@ func getEnvIntOrDefault(key string, defaultValue int) int {
 	return defaultValue
 }
 
+func databaseConfigFromURL(raw string, fallback DatabaseConfig) (DatabaseConfig, error) {
+	u, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil {
+		return fallback, err
+	}
+	if u.Scheme != "postgres" && u.Scheme != "postgresql" {
+		return fallback, fmt.Errorf("unsupported database URL scheme %q", u.Scheme)
+	}
+
+	cfg := fallback
+	if host := u.Hostname(); host != "" {
+		cfg.Host = host
+	}
+	if port := u.Port(); port != "" {
+		parsed, err := strconv.Atoi(port)
+		if err != nil {
+			return fallback, fmt.Errorf("invalid database URL port %q: %w", port, err)
+		}
+		cfg.Port = parsed
+	}
+	if user := u.User.Username(); user != "" {
+		cfg.User = user
+	}
+	if password, ok := u.User.Password(); ok {
+		cfg.Password = password
+	}
+	if dbName := strings.TrimPrefix(u.Path, "/"); dbName != "" {
+		cfg.DBName = dbName
+	}
+	if sslMode := u.Query().Get("sslmode"); sslMode != "" {
+		cfg.SSLMode = sslMode
+	}
+
+	return cfg, nil
+}
+
+func databaseConfigFromEnv() DatabaseConfig {
+	cfg := DatabaseConfig{
+		Host:     "localhost",
+		Port:     5432,
+		User:     "postgres",
+		Password: "",
+		DBName:   "sub2api",
+		SSLMode:  "disable",
+	}
+	if raw := os.Getenv("DATABASE_URL"); strings.TrimSpace(raw) != "" {
+		parsed, err := databaseConfigFromURL(raw, cfg)
+		if err != nil {
+			logger.LegacyPrintf("setup", "Ignoring invalid DATABASE_URL: %v", err)
+		} else {
+			cfg = parsed
+		}
+	}
+
+	cfg.Host = getEnvOrDefault("DATABASE_HOST", cfg.Host)
+	cfg.Port = getEnvIntOrDefault("DATABASE_PORT", cfg.Port)
+	cfg.User = getEnvOrDefault("DATABASE_USER", cfg.User)
+	cfg.Password = getEnvOrDefault("DATABASE_PASSWORD", cfg.Password)
+	cfg.DBName = getEnvOrDefault("DATABASE_DBNAME", cfg.DBName)
+	cfg.SSLMode = getEnvOrDefault("DATABASE_SSLMODE", cfg.SSLMode)
+	return cfg
+}
+
 // AutoSetupFromEnv performs automatic setup using environment variables
 // This is designed for Docker deployment where all config is passed via env vars
 func AutoSetupFromEnv() error {
@@ -550,14 +631,7 @@ func AutoSetupFromEnv() error {
 
 	// Build config from environment variables
 	cfg := &SetupConfig{
-		Database: DatabaseConfig{
-			Host:     getEnvOrDefault("DATABASE_HOST", "localhost"),
-			Port:     getEnvIntOrDefault("DATABASE_PORT", 5432),
-			User:     getEnvOrDefault("DATABASE_USER", "postgres"),
-			Password: getEnvOrDefault("DATABASE_PASSWORD", ""),
-			DBName:   getEnvOrDefault("DATABASE_DBNAME", "sub2api"),
-			SSLMode:  getEnvOrDefault("DATABASE_SSLMODE", "disable"),
-		},
+		Database: databaseConfigFromEnv(),
 		Redis: RedisConfig{
 			Host:      getEnvOrDefault("REDIS_HOST", "localhost"),
 			Port:      getEnvIntOrDefault("REDIS_PORT", 6379),

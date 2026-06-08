@@ -4,6 +4,8 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/lib/pq"
 )
 
 func TestDecideAdminBootstrap(t *testing.T) {
@@ -108,5 +110,79 @@ func TestBuildDatabaseConnectionDSNsUsesPostgresForBootstrap(t *testing.T) {
 	}
 	if !strings.Contains(targetDSN, "dbname=sub2api") {
 		t.Fatalf("target DSN = %q, want configured database", targetDSN)
+	}
+}
+
+func TestDatabaseConfigFromURLParsesManagedPostgresURL(t *testing.T) {
+	fallback := DatabaseConfig{
+		Host:     "localhost",
+		Port:     5432,
+		User:     "postgres",
+		Password: "",
+		DBName:   "sub2api",
+		SSLMode:  "disable",
+	}
+
+	cfg, err := databaseConfigFromURL(
+		"postgres://avnadmin:secret@example.aivencloud.com:22854/defaultdb?sslmode=require",
+		fallback,
+	)
+
+	if err != nil {
+		t.Fatalf("databaseConfigFromURL() error = %v", err)
+	}
+	if cfg.Host != "example.aivencloud.com" {
+		t.Fatalf("Host = %q", cfg.Host)
+	}
+	if cfg.Port != 22854 {
+		t.Fatalf("Port = %d", cfg.Port)
+	}
+	if cfg.User != "avnadmin" {
+		t.Fatalf("User = %q", cfg.User)
+	}
+	if cfg.Password != "secret" {
+		t.Fatalf("Password = %q", cfg.Password)
+	}
+	if cfg.DBName != "defaultdb" {
+		t.Fatalf("DBName = %q", cfg.DBName)
+	}
+	if cfg.SSLMode != "require" {
+		t.Fatalf("SSLMode = %q", cfg.SSLMode)
+	}
+}
+
+func TestDatabaseConfigFromEnvUsesDatabaseURL(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://avnadmin:secret@example.aivencloud.com:22854/defaultdb?sslmode=require")
+
+	cfg := databaseConfigFromEnv()
+
+	if cfg.Host != "example.aivencloud.com" {
+		t.Fatalf("Host = %q", cfg.Host)
+	}
+	if cfg.Port != 22854 {
+		t.Fatalf("Port = %d", cfg.Port)
+	}
+	if cfg.User != "avnadmin" {
+		t.Fatalf("User = %q", cfg.User)
+	}
+	if cfg.DBName != "defaultdb" {
+		t.Fatalf("DBName = %q", cfg.DBName)
+	}
+	if cfg.SSLMode != "require" {
+		t.Fatalf("SSLMode = %q", cfg.SSLMode)
+	}
+}
+
+func TestIsMissingDatabaseError(t *testing.T) {
+	err := &pq.Error{
+		Code:    "3D000",
+		Message: `database "postgres" does not exist`,
+	}
+
+	if !isMissingDatabaseError(err, "postgres") {
+		t.Fatalf("isMissingDatabaseError() = false, want true")
+	}
+	if isMissingDatabaseError(err, "defaultdb") {
+		t.Fatalf("isMissingDatabaseError() = true for wrong database")
 	}
 }

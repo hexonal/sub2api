@@ -185,7 +185,7 @@ const displayGroupStats = computed(() => {
   if (!props.groupStats?.length) return []
 
   const metricKey = props.metric === 'actual_cost' ? 'actual_cost' : 'total_tokens'
-  return [...props.groupStats].sort((a, b) => b[metricKey] - a[metricKey])
+  return [...props.groupStats].sort((a, b) => (b[metricKey] ?? 0) - (a[metricKey] ?? 0))
 })
 
 const chartData = computed(() => {
@@ -195,7 +195,7 @@ const chartData = computed(() => {
     labels: displayGroupStats.value.map((g) => g.group_name || String(g.group_id)),
     datasets: [
       {
-        data: displayGroupStats.value.map((g) => props.metric === 'actual_cost' ? g.actual_cost : g.total_tokens),
+        data: displayGroupStats.value.map((g) => props.metric === 'actual_cost' ? (g.actual_cost ?? 0) : (g.total_tokens ?? 0)),
         backgroundColor: chartColors.slice(0, displayGroupStats.value.length),
         borderWidth: 0
       }
@@ -241,7 +241,8 @@ const formatNumber = (value: number): string => {
   return value.toLocaleString()
 }
 
-const formatCost = (value: number): string => {
+const formatCost = (value: number | null | undefined): string => {
+  value = value ?? 0
   if (value >= 1000) {
     return (value / 1000).toFixed(2) + 'K'
   } else if (value >= 1) {

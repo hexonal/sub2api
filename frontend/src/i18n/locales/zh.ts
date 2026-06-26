@@ -828,6 +828,15 @@ export default {
     quota: '额度',
     lastUsedAt: '上次使用时间',
     useKey: '使用密钥',
+    entroxCli: {
+      action: 'Entrox CLI',
+      title: 'Entrox CLI 登录',
+      description: '先安装 Entrox CLI，再执行登录命令。浏览器授权完成后，CLI 会自动完成登录。',
+      installTitle: '安装 Entrox CLI',
+      loginTitle: 'Terminal',
+      installHint: '如果您已经安装过 Entrox CLI，可以跳过安装步骤，直接执行登录命令。',
+      hint: '在终端执行命令，浏览器授权后会自动完成 entrox CLI 登录。'
+    },
     useKeyModal: {
       title: '使用 API 密钥',
       description: '将以下环境变量添加到您的终端配置文件或直接在终端中运行。',
@@ -849,7 +858,7 @@ export default {
         geminiCli: 'Gemini CLI',
         codexCli: 'Codex CLI',
         codexCliWs: 'Codex CLI (WebSocket)',
-        opencode: 'Entrox CLI'
+        opencode: 'OpenCode'
       },
       antigravity: {
         description: '为 Antigravity 分组配置 API 访问。请根据您使用的客户端选择对应的配置方式。',
@@ -867,13 +876,9 @@ export default {
         note: '这些环境变量将在当前终端会话中生效。如需永久配置，请将其添加到 ~/.bashrc、~/.zshrc 或相应的配置文件中。'
       },
       opencode: {
-        title: 'Entrox CLI 登录',
-        description: '先安装 Entrox CLI，再执行登录命令。浏览器授权完成后，CLI 会自动完成登录。',
-        subtitle: 'Terminal',
-        installTitle: '安装 Entrox CLI',
-        loginTitle: 'Terminal',
-        installHint: '如果您已经安装过 Entrox CLI，可以跳过安装步骤，直接执行登录命令。',
-        hint: '在终端执行命令，浏览器授权后会自动完成 entrox CLI 登录。'
+        title: 'OpenCode 配置示例',
+        subtitle: 'opencode.json',
+        hint: '配置文件路径：~/.config/opencode/opencode.json（或 opencode.jsonc），不存在需手动创建。可使用默认 provider（openai/anthropic/google）或自定义 provider_id。API Key 支持直接配置或通过客户端 /connect 命令配置。示例仅供参考，模型与选项可按需调整。'
       }
     },
     customKeyLabel: '自定义密钥',

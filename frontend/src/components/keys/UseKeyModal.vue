@@ -140,14 +140,6 @@ import BaseDialog from '@/components/common/BaseDialog.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { useClipboard } from '@/composables/useClipboard'
 import type { GroupPlatform } from '@/types'
-import {
-  getDefaultEntroxInstallPlatformTab,
-  getEntroxHomebrewInstallCommand,
-  getEntroxPowerShellInstallCommand,
-  getEntroxScoopInstallCommand,
-  getEntroxScriptInstallCommand,
-  isCnInstallLocale
-} from '@/utils/entroxInstall'
 
 interface Props {
   show: boolean
@@ -177,17 +169,12 @@ interface FileConfig {
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
-const { t, locale } = useI18n()
+const { t } = useI18n()
 const { copyToClipboard: clipboardCopy } = useClipboard()
 
 const copiedIndex = ref<number | null>(null)
 const activeTab = ref<string>('unix')
 const activeClientTab = ref<string>('claude')
-
-const defaultShellTab = (clientTab: string) => {
-  if (clientTab === 'opencode') return getDefaultEntroxInstallPlatformTab()
-  return 'unix'
-}
 
 // Reset tabs when platform changes
 const defaultClientTab = computed(() => {
@@ -198,21 +185,19 @@ const defaultClientTab = computed(() => {
       return 'gemini'
     case 'antigravity':
       return 'claude'
-    case 'entrox':
-      return 'opencode'
     default:
       return 'claude'
   }
 })
 
 watch(() => props.platform, () => {
+  activeTab.value = 'unix'
   activeClientTab.value = defaultClientTab.value
-  activeTab.value = defaultShellTab(activeClientTab.value)
 }, { immediate: true })
 
 // Reset shell tab when client changes
 watch(activeClientTab, () => {
-  activeTab.value = defaultShellTab(activeClientTab.value)
+  activeTab.value = 'unix'
 })
 
 // Icon components
@@ -289,24 +274,24 @@ const clientTabs = computed((): TabConfig[] => {
       if (props.allowMessagesDispatch) {
         tabs.push({ id: 'claude', label: t('keys.useKeyModal.cliTabs.claudeCode'), icon: TerminalIcon })
       }
+      tabs.push({ id: 'opencode', label: t('keys.useKeyModal.cliTabs.opencode'), icon: TerminalIcon })
       return tabs
     }
     case 'gemini':
       return [
-        { id: 'gemini', label: t('keys.useKeyModal.cliTabs.geminiCli'), icon: SparkleIcon }
+        { id: 'gemini', label: t('keys.useKeyModal.cliTabs.geminiCli'), icon: SparkleIcon },
+        { id: 'opencode', label: t('keys.useKeyModal.cliTabs.opencode'), icon: TerminalIcon }
       ]
     case 'antigravity':
       return [
         { id: 'claude', label: t('keys.useKeyModal.cliTabs.claudeCode'), icon: TerminalIcon },
-        { id: 'gemini', label: t('keys.useKeyModal.cliTabs.geminiCli'), icon: SparkleIcon }
-      ]
-    case 'entrox':
-      return [
+        { id: 'gemini', label: t('keys.useKeyModal.cliTabs.geminiCli'), icon: SparkleIcon },
         { id: 'opencode', label: t('keys.useKeyModal.cliTabs.opencode'), icon: TerminalIcon }
       ]
     default:
       return [
-        { id: 'claude', label: t('keys.useKeyModal.cliTabs.claudeCode'), icon: TerminalIcon }
+        { id: 'claude', label: t('keys.useKeyModal.cliTabs.claudeCode'), icon: TerminalIcon },
+        { id: 'opencode', label: t('keys.useKeyModal.cliTabs.opencode'), icon: TerminalIcon }
       ]
   }
 })
@@ -324,23 +309,15 @@ const openaiTabs: TabConfig[] = [
   { id: 'windows', label: 'Windows', icon: WindowsIcon }
 ]
 
-const entroxInstallTabs: TabConfig[] = [
-  { id: 'macos', label: 'macOS', icon: AppleIcon },
-  { id: 'linux', label: 'Linux', icon: TerminalIcon },
-  { id: 'windows', label: 'Windows', icon: WindowsIcon }
-]
+const showShellTabs = computed(() => activeClientTab.value !== 'opencode')
 
 const currentTabs = computed(() => {
-  if (activeClientTab.value === 'opencode') {
-    return entroxInstallTabs
-  }
+  if (!showShellTabs.value) return []
   if (activeClientTab.value === 'codex' || activeClientTab.value === 'codex-ws') {
     return openaiTabs
   }
   return shellTabs
 })
-
-const showShellTabs = computed(() => currentTabs.value.length > 0)
 
 const platformDescription = computed(() => {
   switch (props.platform) {
@@ -353,8 +330,6 @@ const platformDescription = computed(() => {
       return t('keys.useKeyModal.gemini.description')
     case 'antigravity':
       return t('keys.useKeyModal.antigravity.description')
-    case 'entrox':
-      return t('keys.useKeyModal.opencode.description')
     default:
       return t('keys.useKeyModal.description')
   }
@@ -403,9 +378,38 @@ const comment = (value: string) => wrapToken('text-slate-500', value)
 const currentFiles = computed((): FileConfig[] => {
   const baseUrl = props.baseUrl || window.location.origin
   const apiKey = props.apiKey
+  const baseRoot = baseUrl.replace(/\/v1\/?$/, '').replace(/\/+$/, '')
+  const ensureV1 = (value: string) => {
+    const trimmed = value.replace(/\/+$/, '')
+    return trimmed.endsWith('/v1') ? trimmed : `${trimmed}/v1`
+  }
+  const apiBase = ensureV1(baseRoot)
+  const antigravityBase = ensureV1(`${baseRoot}/antigravity`)
+  const antigravityGeminiBase = (() => {
+    const trimmed = `${baseRoot}/antigravity`.replace(/\/+$/, '')
+    return trimmed.endsWith('/v1beta') ? trimmed : `${trimmed}/v1beta`
+  })()
+  const geminiBase = (() => {
+    const trimmed = baseRoot.replace(/\/+$/, '')
+    return trimmed.endsWith('/v1beta') ? trimmed : `${trimmed}/v1beta`
+  })()
 
   if (activeClientTab.value === 'opencode') {
-    return generateEntroxCliFiles()
+    switch (props.platform) {
+      case 'anthropic':
+        return [generateOpenCodeConfig('anthropic', apiBase, apiKey)]
+      case 'openai':
+        return [generateOpenCodeConfig('openai', apiBase, apiKey)]
+      case 'gemini':
+        return [generateOpenCodeConfig('gemini', geminiBase, apiKey)]
+      case 'antigravity':
+        return [
+          generateOpenCodeConfig('antigravity-claude', antigravityBase, apiKey, 'opencode.json (Claude)'),
+          generateOpenCodeConfig('antigravity-gemini', antigravityGeminiBase, apiKey, 'opencode.json (Gemini)')
+        ]
+      default:
+        return [generateOpenCodeConfig('openai', apiBase, apiKey)]
+    }
   }
 
   switch (props.platform) {
@@ -606,53 +610,465 @@ goals = true`
   ]
 }
 
-function generateEntroxCliFiles(): FileConfig[] {
-  const isCn = isCnInstallLocale(locale.value)
-  const installTitle = t('keys.useKeyModal.opencode.installTitle')
-  const loginFile = {
-    path: t('keys.useKeyModal.opencode.loginTitle'),
-    content: 'entrox login',
+function generateOpenCodeConfig(platform: string, baseUrl: string, apiKey: string, pathLabel?: string): FileConfig {
+  const provider: Record<string, any> = {
+    [platform]: {
+      options: {
+        baseURL: baseUrl,
+        apiKey
+      }
+    }
+  }
+  const openaiModels = {
+    'gpt-5.2': {
+      name: 'GPT-5.2',
+      limit: {
+        context: 400000,
+        output: 128000
+      },
+      options: {
+        store: false
+      },
+      variants: {
+        low: {},
+        medium: {},
+        high: {},
+        xhigh: {}
+      }
+    },
+    'gpt-5.5': {
+      name: 'GPT-5.5',
+      limit: {
+        context: 1050000,
+        output: 128000
+      },
+      options: {
+        store: false
+      },
+      variants: {
+        low: {},
+        medium: {},
+        high: {},
+        xhigh: {}
+      }
+    },
+    'gpt-5.4': {
+      name: 'GPT-5.4',
+      limit: {
+        context: 1050000,
+        output: 128000
+      },
+      options: {
+        store: false
+      },
+      variants: {
+        low: {},
+        medium: {},
+        high: {},
+        xhigh: {}
+      }
+    },
+    'gpt-5.4-mini': {
+      name: 'GPT-5.4 Mini',
+      limit: {
+        context: 400000,
+        output: 128000
+      },
+      options: {
+        store: false
+      },
+      variants: {
+        low: {},
+        medium: {},
+        high: {},
+        xhigh: {}
+      }
+    },
+    'gpt-5.3-codex-spark': {
+      name: 'GPT-5.3 Codex Spark',
+      limit: {
+        context: 128000,
+        output: 32000
+      },
+      options: {
+        store: false
+      },
+      variants: {
+        low: {},
+        medium: {},
+        high: {},
+        xhigh: {}
+      }
+    },
+    'gpt-5.3-codex': {
+      name: 'GPT-5.3 Codex',
+      limit: {
+        context: 400000,
+        output: 128000
+      },
+      options: {
+        store: false
+      },
+      variants: {
+        low: {},
+        medium: {},
+        high: {},
+        xhigh: {}
+      }
+    },
+    'codex-mini-latest': {
+      name: 'Codex Mini',
+      limit: {
+        context: 200000,
+        output: 100000
+      },
+      options: {
+        store: false
+      },
+      variants: {
+        low: {},
+        medium: {},
+        high: {}
+      }
+    }
+  }
+  const geminiModels = {
+    'gemini-2.0-flash': {
+      name: 'Gemini 2.0 Flash',
+      limit: {
+        context: 1048576,
+        output: 65536
+      },
+      modalities: {
+        input: ['text', 'image', 'pdf'],
+        output: ['text']
+      }
+    },
+    'gemini-2.5-flash': {
+      name: 'Gemini 2.5 Flash',
+      limit: {
+        context: 1048576,
+        output: 65536
+      },
+      modalities: {
+        input: ['text', 'image', 'pdf'],
+        output: ['text']
+      }
+    },
+    'gemini-2.5-pro': {
+      name: 'Gemini 2.5 Pro',
+      limit: {
+        context: 2097152,
+        output: 65536
+      },
+      modalities: {
+        input: ['text', 'image', 'pdf'],
+        output: ['text']
+      },
+      options: {
+        thinking: {
+          budgetTokens: 24576,
+          type: 'enabled'
+        }
+      }
+    },
+    'gemini-3.5-flash': {
+      name: 'Gemini 3.5 Flash',
+      limit: {
+        context: 1048576,
+        output: 65536
+      },
+      modalities: {
+        input: ['text', 'image', 'pdf'],
+        output: ['text']
+      }
+    },
+    'gemini-3-flash-preview': {
+      name: 'Gemini 3 Flash Preview',
+      limit: {
+        context: 1048576,
+        output: 65536
+      },
+      modalities: {
+        input: ['text', 'image', 'pdf'],
+        output: ['text']
+      }
+    },
+    'gemini-3-pro-preview': {
+      name: 'Gemini 3 Pro Preview',
+      limit: {
+        context: 1048576,
+        output: 65536
+      },
+      modalities: {
+        input: ['text', 'image', 'pdf'],
+        output: ['text']
+      },
+      options: {
+        thinking: {
+          budgetTokens: 24576,
+          type: 'enabled'
+        }
+      }
+    },
+    'gemini-3.1-pro-preview': {
+      name: 'Gemini 3.1 Pro Preview',
+      limit: {
+        context: 1048576,
+        output: 65536
+      },
+      modalities: {
+        input: ['text', 'image', 'pdf'],
+        output: ['text']
+      },
+      options: {
+        thinking: {
+          budgetTokens: 24576,
+          type: 'enabled'
+        }
+      }
+    }
+  }
+
+  const antigravityGeminiModels = {
+    'gemini-2.5-flash': {
+      name: 'Gemini 2.5 Flash',
+      limit: {
+        context: 1048576,
+        output: 65536
+      },
+      modalities: {
+        input: ['text', 'image', 'pdf'],
+        output: ['text']
+      },
+      options: {
+        thinking: {
+          budgetTokens: 24576,
+          type: 'disable'
+        }
+      }
+    },
+    'gemini-2.5-flash-lite': {
+      name: 'Gemini 2.5 Flash Lite',
+      limit: {
+        context: 1048576,
+        output: 65536
+      },
+      modalities: {
+        input: ['text', 'image', 'pdf'],
+        output: ['text']
+      },
+      options: {
+        thinking: {
+          budgetTokens: 24576,
+          type: 'enabled'
+        }
+      }
+    },
+    'gemini-2.5-flash-thinking': {
+      name: 'Gemini 2.5 Flash (Thinking)',
+      limit: {
+        context: 1048576,
+        output: 65536
+      },
+      modalities: {
+        input: ['text', 'image', 'pdf'],
+        output: ['text']
+      },
+      options: {
+        thinking: {
+          budgetTokens: 24576,
+          type: 'enabled'
+        }
+      }
+    },
+    'gemini-3-flash': {
+      name: 'Gemini 3 Flash',
+      limit: {
+        context: 1048576,
+        output: 65536
+      },
+      modalities: {
+        input: ['text', 'image', 'pdf'],
+        output: ['text']
+      },
+      options: {
+        thinking: {
+          budgetTokens: 24576,
+          type: 'enabled'
+        }
+      }
+    },
+    'gemini-3.1-pro-low': {
+      name: 'Gemini 3.1 Pro Low',
+      limit: {
+        context: 1048576,
+        output: 65536
+      },
+      modalities: {
+        input: ['text', 'image', 'pdf'],
+        output: ['text']
+      },
+      options: {
+        thinking: {
+          budgetTokens: 24576,
+          type: 'enabled'
+        }
+      }
+    },
+    'gemini-3.1-pro-high': {
+      name: 'Gemini 3.1 Pro High',
+      limit: {
+        context: 1048576,
+        output: 65536
+      },
+      modalities: {
+        input: ['text', 'image', 'pdf'],
+        output: ['text']
+      },
+      options: {
+        thinking: {
+          budgetTokens: 24576,
+          type: 'enabled'
+        }
+      }
+    },
+    'gemini-2.5-flash-image': {
+      name: 'Gemini 2.5 Flash Image',
+      limit: {
+        context: 1048576,
+        output: 65536
+      },
+      modalities: {
+        input: ['text', 'image'],
+        output: ['image']
+      },
+      options: {
+        thinking: {
+          budgetTokens: 24576,
+          type: 'enabled'
+        }
+      }
+    },
+    'gemini-3.1-flash-image': {
+      name: 'Gemini 3.1 Flash Image',
+      limit: {
+        context: 1048576,
+        output: 65536
+      },
+      modalities: {
+        input: ['text', 'image'],
+        output: ['image']
+      },
+      options: {
+        thinking: {
+          budgetTokens: 24576,
+          type: 'enabled'
+        }
+      }
+    }
+  }
+  const claudeModels = {
+    'claude-fable-5': {
+      name: 'Claude Fable 5',
+      limit: {
+        context: 1048576,
+        output: 128000
+      },
+      modalities: {
+        input: ['text', 'image', 'pdf'],
+        output: ['text']
+      },
+      options: {
+        thinking: {
+          type: 'adaptive'
+        }
+      }
+    },
+    'claude-opus-4-6-thinking': {
+      name: 'Claude 4.6 Opus (Thinking)',
+      limit: {
+        context: 200000,
+        output: 128000
+      },
+      modalities: {
+        input: ['text', 'image', 'pdf'],
+        output: ['text']
+      },
+      options: {
+        thinking: {
+          budgetTokens: 24576,
+          type: 'enabled'
+        }
+      }
+    },
+    'claude-sonnet-4-6': {
+      name: 'Claude 4.6 Sonnet',
+      limit: {
+        context: 200000,
+        output: 64000
+      },
+      modalities: {
+        input: ['text', 'image', 'pdf'],
+        output: ['text']
+      },
+      options: {
+        thinking: {
+          budgetTokens: 24576,
+          type: 'enabled'
+        }
+      }
+    }
+  }
+
+  if (platform === 'gemini') {
+    provider[platform].npm = '@ai-sdk/google'
+    provider[platform].models = geminiModels
+  } else if (platform === 'anthropic') {
+    provider[platform].npm = '@ai-sdk/anthropic'
+  } else if (platform === 'antigravity-claude') {
+    provider[platform].npm = '@ai-sdk/anthropic'
+    provider[platform].name = 'Antigravity (Claude)'
+    provider[platform].models = claudeModels
+  } else if (platform === 'antigravity-gemini') {
+    provider[platform].npm = '@ai-sdk/google'
+    provider[platform].name = 'Antigravity (Gemini)'
+    provider[platform].models = antigravityGeminiModels
+  } else if (platform === 'openai') {
+    provider[platform].models = openaiModels
+  }
+
+  const agent =
+    platform === 'openai'
+      ? {
+          build: {
+            options: {
+              store: false
+            }
+          },
+          plan: {
+            options: {
+              store: false
+            }
+          }
+        }
+      : undefined
+
+  const content = JSON.stringify(
+    {
+      provider,
+      ...(agent ? { agent } : {}),
+      $schema: 'https://opencode.ai/config.json'
+    },
+    null,
+    2
+  )
+
+  return {
+    path: pathLabel ?? 'opencode.json',
+    content,
     hint: t('keys.useKeyModal.opencode.hint')
   }
-
-  if (activeTab.value === 'windows') {
-    return [
-      {
-        path: `${installTitle} - Windows - PowerShell`,
-        content: getEntroxPowerShellInstallCommand(isCn),
-        hint: t('keys.useKeyModal.opencode.installHint')
-      },
-      {
-        path: `${installTitle} - Windows - Scoop`,
-        content: getEntroxScoopInstallCommand(isCn)
-      },
-      loginFile
-    ]
-  }
-
-  if (activeTab.value === 'linux') {
-    return [
-      {
-        path: `${installTitle} - Linux`,
-        content: getEntroxScriptInstallCommand(isCn),
-        hint: t('keys.useKeyModal.opencode.installHint')
-      },
-      loginFile
-    ]
-  }
-
-  return [
-    {
-      path: `${installTitle} - macOS - curl`,
-      content: getEntroxScriptInstallCommand(isCn),
-      hint: t('keys.useKeyModal.opencode.installHint')
-    },
-    {
-      path: `${installTitle} - macOS - Homebrew`,
-      content: getEntroxHomebrewInstallCommand(isCn)
-    },
-    loginFile
-  ]
 }
 
 const copyContent = async (content: string, index: number) => {

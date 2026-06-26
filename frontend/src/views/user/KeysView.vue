@@ -313,12 +313,20 @@
             <div class="flex items-center gap-1">
               <!-- Use Key Button -->
               <button
-                v-if="isEntroxKey(row)"
                 @click="openUseKeyModal(row)"
                 class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-green-50 hover:text-green-600 dark:hover:bg-green-900/20 dark:hover:text-green-400"
               >
                 <Icon name="terminal" size="sm" />
                 <span class="text-xs">{{ t('keys.useKey') }}</span>
+              </button>
+              <!-- Entrox CLI Button -->
+              <button
+                v-if="isEntroxKey(row)"
+                @click="openEntroxCliModal(row)"
+                class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-primary-50 hover:text-primary-600 dark:hover:bg-primary-900/20 dark:hover:text-primary-400"
+              >
+                <Icon name="login" size="sm" />
+                <span class="text-xs">{{ t('keys.entroxCli.action') }}</span>
               </button>
               <!-- Import to CC Switch Button -->
               <button
@@ -931,6 +939,12 @@
       @close="closeUseKeyModal"
     />
 
+    <!-- Entrox CLI Modal -->
+    <EntroxCliModal
+      :show="showEntroxCliModal"
+      @close="closeEntroxCliModal"
+    />
+
     <!-- CCS Client Selection Dialog for Antigravity -->
     <BaseDialog
       :show="showCcsClientSelect"
@@ -1066,6 +1080,7 @@ import TablePageLayout from '@/components/layout/TablePageLayout.vue'
 	import SearchInput from '@/components/common/SearchInput.vue'
 	import Icon from '@/components/icons/Icon.vue'
 	import UseKeyModal from '@/components/keys/UseKeyModal.vue'
+	import EntroxCliModal from '@/components/keys/EntroxCliModal.vue'
 	import EndpointPopover from '@/components/keys/EndpointPopover.vue'
 	import GroupBadge from '@/components/common/GroupBadge.vue'
 	import GroupOptionItem from '@/components/common/GroupOptionItem.vue'
@@ -1144,6 +1159,7 @@ const showDeleteDialog = ref(false)
 const showResetQuotaDialog = ref(false)
 const showResetRateLimitDialog = ref(false)
 const showUseKeyModal = ref(false)
+const showEntroxCliModal = ref(false)
 const showCcsClientSelect = ref(false)
 const pendingCcsRow = ref<ApiKey | null>(null)
 const selectedKey = ref<ApiKey | null>(null)
@@ -1363,7 +1379,6 @@ const loadPublicSettings = async () => {
 const isEntroxKey = (key: ApiKey) => key.group?.platform === 'entrox'
 
 const openUseKeyModal = (key: ApiKey) => {
-  if (!isEntroxKey(key)) return
   selectedKey.value = key
   showUseKeyModal.value = true
 }
@@ -1371,6 +1386,15 @@ const openUseKeyModal = (key: ApiKey) => {
 const closeUseKeyModal = () => {
   showUseKeyModal.value = false
   selectedKey.value = null
+}
+
+const openEntroxCliModal = (key: ApiKey) => {
+  if (!isEntroxKey(key)) return
+  showEntroxCliModal.value = true
+}
+
+const closeEntroxCliModal = () => {
+  showEntroxCliModal.value = false
 }
 
 const handlePageChange = (page: number) => {

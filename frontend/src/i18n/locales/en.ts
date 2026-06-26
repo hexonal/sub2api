@@ -831,6 +831,15 @@ export default {
     quota: 'Quota',
     lastUsedAt: 'Last Used',
     useKey: 'Use Key',
+    entroxCli: {
+      action: 'Entrox CLI',
+      title: 'Entrox CLI Login',
+      description: 'Install Entrox CLI first, then run the login command. Browser authorization will complete CLI login automatically.',
+      installTitle: 'Install Entrox CLI',
+      loginTitle: 'Terminal',
+      installHint: 'If Entrox CLI is already installed, skip installation and run the login command directly.',
+      hint: 'Run the command in terminal. Browser authorization will complete entrox CLI login automatically.',
+    },
     useKeyModal: {
       title: 'Use API Key',
       description:
@@ -851,7 +860,7 @@ export default {
         geminiCli: 'Gemini CLI',
         codexCli: 'Codex CLI',
         codexCliWs: 'Codex CLI (WebSocket)',
-        opencode: 'Entrox CLI',
+        opencode: 'OpenCode',
       },
       antigravity: {
         description: 'Configure API access for Antigravity group. Select the configuration method based on your client.',
@@ -866,13 +875,9 @@ export default {
         note: 'These environment variables will be active in the current terminal session. For permanent configuration, add them to ~/.bashrc, ~/.zshrc, or the appropriate configuration file.',
       },
       opencode: {
-        title: 'Entrox CLI Login',
-        description: 'Install Entrox CLI first, then run the login command. Browser authorization will complete CLI login automatically.',
-        subtitle: 'Terminal',
-        installTitle: 'Install Entrox CLI',
-        loginTitle: 'Terminal',
-        installHint: 'If Entrox CLI is already installed, skip installation and run the login command directly.',
-        hint: 'Run the command in terminal. Browser authorization will complete entrox CLI login automatically.',
+        title: 'OpenCode Example',
+        subtitle: 'opencode.json',
+        hint: 'Config path: ~/.config/opencode/opencode.json (or opencode.jsonc), create if not exists. Use default providers (openai/anthropic/google) or custom provider_id. API Key can be configured directly or via /connect command. This is an example, adjust models and options as needed.',
       },
     },
     customKeyLabel: 'Custom Key',

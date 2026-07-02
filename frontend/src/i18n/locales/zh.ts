@@ -2346,6 +2346,7 @@ export default {
         gemini: 'Gemini',
         antigravity: 'Antigravity',
         entrox: 'Entrox',
+        grok: 'Grok',
       },
       saving: '保存中...',
       noGroups: '暂无分组',
